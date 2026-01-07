@@ -43,7 +43,7 @@ class Installer {
 
         // Log activation
         $logger = new ActivityLogger();
-        $logger->log( 'info', 'SAURITY plugin activated' );
+        $logger->log( 'info', 'Saurity plugin activated' );
     }
 
     /**
@@ -77,7 +77,7 @@ class Installer {
 
         // Log deactivation
         $logger = new ActivityLogger();
-        $logger->log( 'info', 'SAURITY plugin deactivated' );
+        $logger->log( 'info', 'Saurity plugin deactivated' );
     }
 
     /**

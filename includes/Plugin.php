@@ -49,39 +49,37 @@ class Plugin {
      * Initialize plugin
      */
     public function init() {
-        // Check if kill switch is active
+        // Initialize kill switch and logger first (always needed)
         $kill_switch = new KillSwitch();
+        $logger = new ActivityLogger();
+        
+        // Initialize admin interface (always needed for settings access)
+        if ( is_admin() ) {
+            $this->components['admin'] = new Admin( $logger, $kill_switch );
+            $this->components['admin']->hook();
+        }
+
+        // Check if kill switch is active
         if ( $kill_switch->is_active() ) {
-            // All enforcement disabled
-            $this->log_kill_switch_active();
+            // All enforcement disabled - skip security components
             return;
         }
 
-        // Initialize core components
-        $this->components['logger'] = new ActivityLogger();
-        $this->components['rate_limiter'] = new RateLimiter( $this->components['logger'] );
-        $this->components['login_gateway'] = new LoginGateway( $this->components['rate_limiter'], $this->components['logger'] );
-        $this->components['firewall'] = new Firewall( $this->components['logger'] );
+        // Initialize security components only if kill switch is off
+        $this->components['logger'] = $logger;
+        $this->components['rate_limiter'] = new RateLimiter( $logger );
+        $this->components['login_gateway'] = new LoginGateway( $this->components['rate_limiter'], $logger );
+        $this->components['firewall'] = new Firewall( $logger );
 
-        // Initialize admin interface
-        if ( is_admin() ) {
-            $this->components['admin'] = new Admin( $this->components['logger'], $kill_switch );
-        }
-
-        // Hook components
-        foreach ( $this->components as $component ) {
-            if ( method_exists( $component, 'hook' ) ) {
-                $component->hook();
+        // Hook security components
+        foreach ( [ 'rate_limiter', 'login_gateway', 'firewall' ] as $component_name ) {
+            if ( isset( $this->components[ $component_name ] ) && method_exists( $this->components[ $component_name ], 'hook' ) ) {
+                $this->components[ $component_name ]->hook();
             }
         }
-    }
 
-    /**
-     * Log kill switch activation
-     */
-    private function log_kill_switch_active() {
-        $logger = new ActivityLogger();
-        $logger->log( 'info', 'Kill switch is active - all enforcement disabled' );
+        // Hook WordPress events for comprehensive activity logging
+        $logger->hook_wordpress_events();
     }
 
     /**
