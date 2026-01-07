@@ -1,10 +1,10 @@
-# SAURITY v0.1
+# Saurity v0.1
 
 **Minimal Viable Security Foundation for WordPress**
 
-SAURITY v0.1 exists for trust, stability, and survival — NOT feature richness.
+Saurity v0.1 exists for trust, stability, and survival — NOT feature richness.
 
-## What SAURITY v0.1 Does
+## What Saurity v0.1 Does
 
 ### ✅ Blocks Brute Force
 - Progressive rate limiting on login attempts
@@ -35,7 +35,7 @@ SAURITY v0.1 exists for trust, stability, and survival — NOT feature richness.
 
 1. Upload the `saurity` folder to `/wp-content/plugins/`
 2. Activate through WordPress admin
-3. Configure settings at **Settings → SAURITY**
+3. Configure settings at **Saurity** (in main menu)
 4. **Save your Emergency Bypass URL** (shown in admin)
 
 ## Default Settings
@@ -48,13 +48,25 @@ SAURITY v0.1 exists for trust, stability, and survival — NOT feature richness.
 ## Emergency Recovery
 
 ### Method 1: Kill Switch
-Navigate to **Settings → SAURITY** and click "Activate Kill Switch"
+Navigate to **Saurity** and click "Activate Kill Switch"
 
 ### Method 2: Emergency Bypass URL
-Use the secret URL provided in admin:
+**What it does:** Temporarily bypasses security for ONE page load only (not permanent).
+
+**When to use:** If you're completely locked out and can't access wp-admin to use the kill switch.
+
+**How it works:**
+1. Use the secret URL shown in your Saurity settings page
+2. This allows you to load ONE page without security checks
+3. Quickly navigate to Saurity settings and activate the kill switch
+4. The bypass only works for that single request - refresh and it's gone
+
+Example URL (yours will be different):
 ```
 https://yoursite.com/?saurity_bypass=YOUR_SECRET_KEY
 ```
+
+**Important:** This does NOT permanently disable security. Save this URL before you need it!
 
 ### Method 3: File System
 Rename or delete the plugin folder:
@@ -98,7 +110,7 @@ saurity/
 - PHP 8.0+
 - MySQL 5.7+ / MariaDB 10.2+
 
-## What SAURITY v0.1 Does NOT Do
+## What Saurity v0.1 Does NOT Do
 
 ❌ OAuth, 2FA, CAPTCHA  
 ❌ Malware scanning  
@@ -114,7 +126,7 @@ These features are intentionally excluded to maintain stability and zero admin l
 
 ## Known Limitations
 
-1. **No dashboard widget** - Access via Settings → SAURITY
+1. **No dashboard widget** - Access via Saurity menu
 2. **No email notifications** - Check logs manually
 3. **Transient-based counters** - May reset if cache is cleared
 4. **Soft 404 on blocks** - Returns 404 instead of explicit block message
@@ -123,7 +135,7 @@ These features are intentionally excluded to maintain stability and zero admin l
 
 ## Configuration
 
-All settings available at **Settings → SAURITY**:
+All settings available at **Saurity** (main menu):
 
 - **Rate Limit Attempts** (1-20, default: 5)
 - **Rate Limit Window** (60-3600 seconds, default: 600)
@@ -177,7 +189,7 @@ Potential future features (NOT in v0.1):
 
 ## Philosophy
 
-SAURITY v0.1 is built on these principles:
+Saurity v0.1 is built on these principles:
 
 1. **Stability over features**
 2. **Fail open, never closed**
@@ -194,8 +206,8 @@ GPL v2 or later
 
 ## Credits
 
-Built by a senior WordPress security engineer who values trust and stability over feature bloat.
+Built by Saurav Kumar - https://www.saurity.com
 
 ---
 
-**Remember:** SAURITY v0.1 is a foundation. It blocks obvious attacks without breaking your site. Install it, configure it, and forget it's there.
+**Remember:** Saurity v0.1 is a foundation. It blocks obvious attacks without breaking your site. Install it, configure it, and forget it's there.

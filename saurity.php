@@ -1,13 +1,13 @@
 <?php
 /**
- * Plugin Name: SAURITY
- * Plugin URI: https://github.com/yourusername/saurity
+ * Plugin Name: Saurity
+ * Plugin URI: https://www.saurity.com
  * Description: Minimal viable security foundation for WordPress. Blocks brute force without breaking your site.
  * Version: 0.1.0
  * Requires at least: 6.0
  * Requires PHP: 8.0
- * Author: Your Name
- * Author URI: https://yoursite.com
+ * Author: Saurav Kumar
+ * Author URI: https://www.saurity.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: saurity
@@ -77,3 +77,10 @@ register_deactivation_hook( __FILE__, function() {
 
 // Uninstall hook
 register_uninstall_hook( __FILE__, [ 'Saurity\\Installer', 'uninstall' ] );
+
+// Add settings link on plugin page
+add_filter( 'plugin_action_links_' . SAURITY_BASENAME, function( $links ) {
+    $settings_link = '<a href="' . admin_url( 'admin.php?page=saurity' ) . '">Settings</a>';
+    array_unshift( $links, $settings_link );
+    return $links;
+} );

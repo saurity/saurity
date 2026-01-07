@@ -78,11 +78,49 @@ class KillSwitch {
 
         // Constant-time comparison to prevent timing attacks
         if ( hash_equals( $stored_key, $provided_key ) ) {
-            // Temporarily disable for this request
+            // Log bypass usage for security audit
+            $this->log_bypass_usage();
+            
+            // Show admin notice
+            add_action( 'admin_notices', [ $this, 'show_bypass_notice' ] );
+            
+            // Temporarily disable for this request only
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Log emergency bypass usage
+     */
+    private function log_bypass_usage() {
+        // Only log once per request
+        static $logged = false;
+        if ( $logged ) {
+            return;
+        }
+        $logged = true;
+
+        $logger = new ActivityLogger();
+        $logger->log( 'warning', 'Emergency bypass URL used - security bypassed for this request only' );
+    }
+
+    /**
+     * Show bypass notice in admin
+     */
+    public function show_bypass_notice() {
+        ?>
+        <div class="notice notice-warning">
+            <p>
+                <strong>⚠️ Emergency Bypass Active</strong><br>
+                Security is bypassed for this page load only. This does NOT permanently disable protection.<br>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=saurity' ) ); ?>" class="button button-primary">
+                    Go to Saurity Settings
+                </a>
+            </p>
+        </div>
+        <?php
     }
 
     /**
