@@ -38,6 +38,24 @@ class Installer {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta( $sql );
 
+        // Create reports table
+        $reports_table = $wpdb->prefix . 'saurity_reports';
+        $sql_reports = "CREATE TABLE IF NOT EXISTS $reports_table (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            report_type varchar(50) NOT NULL DEFAULT 'weekly',
+            start_date datetime NOT NULL,
+            end_date datetime NOT NULL,
+            report_data longtext NOT NULL,
+            security_score int(3) NOT NULL DEFAULT 0,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY report_type (report_type),
+            KEY start_date (start_date),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        dbDelta( $sql_reports );
+
         // Set default options
         self::set_default_options();
 
@@ -89,6 +107,10 @@ class Installer {
         // Drop logs table
         $table_name = $wpdb->prefix . 'saurity_logs';
         $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+
+        // Drop reports table
+        $reports_table = $wpdb->prefix . 'saurity_reports';
+        $wpdb->query( "DROP TABLE IF EXISTS $reports_table" );
 
         // Delete all options
         $options = [

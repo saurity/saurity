@@ -8,31 +8,67 @@
 namespace Saurity;
 
 /**
- * ActivityLogger class - human-readable logging
+ * ActivityLogger class - human-readable logging with DoS protection
  */
 class ActivityLogger {
 
     /**
-     * Log an event
+     * Cache directory for throttling
+     *
+     * @var string
+     */
+    private $cache_dir;
+
+    /**
+     * Table existence cache (check once per request)
+     *
+     * @var bool|null
+     */
+    private static $table_exists_cache = null;
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        // Use same cache directory as Firewall/RateLimiter
+        $this->cache_dir = sys_get_temp_dir() . '/saurity_firewall';
+        if ( ! file_exists( $this->cache_dir ) ) {
+            @mkdir( $this->cache_dir, 0755, true );
+        }
+    }
+
+    /**
+     * Log an event with throttling to prevent database DoS
      *
      * @param string $type Event type (info, warning, error, critical).
      * @param string $message Human-readable message.
      * @param array  $context Additional context (ip, username, etc.).
      */
     public function log( $type, $message, $context = [] ) {
-        global $wpdb;
-
-        $table_name = $wpdb->prefix . 'saurity_logs';
-
-        // Defensive: ensure table exists
-        if ( ! $this->table_exists( $table_name ) ) {
+        // Check if logging is enabled
+        if ( ! $this->is_logging_enabled() ) {
             return;
         }
 
         $ip_address = $context['ip'] ?? $this->get_client_ip();
+
+        // THROTTLING: Prevent same IP from logging same event too frequently
+        // This protects database during attacks (10,000 req/s would = 10,000 DB writes)
+        if ( ! $this->should_log( $type, $message, $ip_address ) ) {
+            return; // Skip this log entry (duplicate within throttle window)
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'saurity_logs';
+
+        // Check table existence (cached per request, not per log call)
+        if ( ! $this->table_exists_cached( $table_name ) ) {
+            return;
+        }
+
         $user_login = $context['username'] ?? ( is_user_logged_in() ? wp_get_current_user()->user_login : null );
 
-        // Use WordPress timezone for logging
+        // Use WordPress timezone for logging (already in local time)
         $timestamp = current_time( 'mysql' );
 
         $wpdb->insert(
@@ -47,8 +83,14 @@ class ActivityLogger {
             [ '%s', '%s', '%s', '%s', '%s' ]
         );
 
-        // Auto-cleanup old logs (keep last 1000 entries)
-        $this->cleanup_old_logs( $table_name );
+        // Clear dashboard cache occasionally (5% chance to avoid constant DB writes)
+        // Transient expires naturally anyway, so this is just for freshness
+        if ( rand( 1, 20 ) === 1 ) {
+            delete_transient( 'saurity_dashboard_data' );
+        }
+
+        // Schedule cleanup (doesn't run immediately)
+        $this->schedule_cleanup();
     }
 
     /**
@@ -102,16 +144,8 @@ class ActivityLogger {
         $sql = "SELECT * FROM $table_name" . $where . " ORDER BY created_at DESC LIMIT $per_page OFFSET $offset";
         $results = $wpdb->get_results( $sql, ARRAY_A );
 
-        // Convert UTC timestamps to local time for display
-        if ( ! empty( $results ) ) {
-            foreach ( $results as &$log ) {
-                if ( ! empty( $log['created_at'] ) ) {
-                    // Convert from UTC to local timezone
-                    $utc_time = strtotime( $log['created_at'] . ' UTC' );
-                    $log['created_at'] = date_i18n( 'Y-m-d H:i:s', $utc_time );
-                }
-            }
-        }
+        // Timestamps are already in WordPress timezone (from current_time)
+        // No conversion needed for display
 
         return [
             'logs' => $results ?: [],
@@ -167,74 +201,163 @@ class ActivityLogger {
     }
 
     /**
-     * Get client IP address
+     * Get client IP address securely
+     * 
+     * SECURITY: Always uses REMOTE_ADDR by default to prevent IP spoofing.
+     * Only trusts proxy headers if SAURITY_BEHIND_PROXY constant is defined.
+     * 
+     * This ensures accurate forensic logs - if attacker sends fake headers,
+     * we log their REAL IP, not the spoofed one.
      *
      * @return string
      */
     private function get_client_ip() {
-        // Check for proxy headers (common in shared hosting)
-        $headers = [
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'REMOTE_ADDR',
-        ];
+        // Default to REMOTE_ADDR (cannot be spoofed by client)
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
 
-        foreach ( $headers as $header ) {
-            if ( ! empty( $_SERVER[ $header ] ) ) {
-                $ip = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
-                
-                // Handle X-Forwarded-For with multiple IPs
-                if ( strpos( $ip, ',' ) !== false ) {
-                    $ips = array_map( 'trim', explode( ',', $ip ) );
-                    $ip = $ips[0];
-                }
+        // Only check proxy headers if explicitly configured
+        // This prevents IP spoofing in logs during forensic analysis
+        if ( defined( 'SAURITY_BEHIND_PROXY' ) && SAURITY_BEHIND_PROXY ) {
+            $headers = [
+                'HTTP_CF_CONNECTING_IP', // Cloudflare
+                'HTTP_X_FORWARDED_FOR',  // Standard reverse proxy
+                'HTTP_X_REAL_IP',        // Nginx
+            ];
 
-                // Basic IPv4/IPv6 validation
-                if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
-                    return $ip;
+            foreach ( $headers as $header ) {
+                if ( ! empty( $_SERVER[ $header ] ) ) {
+                    $ip_value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+                    
+                    // Handle X-Forwarded-For with multiple IPs
+                    if ( strpos( $ip_value, ',' ) !== false ) {
+                        $ips = array_map( 'trim', explode( ',', $ip_value ) );
+                        $ip = $ips[0];
+                    } else {
+                        $ip = $ip_value;
+                    }
+                    break;
                 }
             }
         }
 
-        return '0.0.0.0';
+        // Validate and return
+        return filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : '0.0.0.0';
     }
 
     /**
-     * Check if table exists
+     * Check if logging is enabled
+     *
+     * @return bool
+     */
+    private function is_logging_enabled() {
+        return (bool) get_option( 'saurity_enable_logging', true );
+    }
+
+    /**
+     * Check if table exists (cached per request)
+     *
+     * @param string $table_name Table name.
+     * @return bool
+     */
+    private function table_exists_cached( $table_name ) {
+        // Check once per request, cache result
+        if ( null !== self::$table_exists_cache ) {
+            return self::$table_exists_cache;
+        }
+
+        global $wpdb;
+        $query = $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name );
+        self::$table_exists_cache = (bool) $wpdb->get_var( $query );
+
+        return self::$table_exists_cache;
+    }
+
+    /**
+     * Check if table exists (legacy method for backwards compatibility)
      *
      * @param string $table_name Table name.
      * @return bool
      */
     private function table_exists( $table_name ) {
-        global $wpdb;
-
-        $query = $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name );
-        return (bool) $wpdb->get_var( $query );
+        return $this->table_exists_cached( $table_name );
     }
 
     /**
-     * Cleanup old logs
+     * Throttling: Should this event be logged?
+     * Prevents same IP from flooding database with identical log entries
+     * EXCEPTION: Login events are NEVER throttled for security auditing
      *
-     * Delete logs older than 15 days
-     *
-     * @param string $table_name Table name.
+     * @param string $type Event type.
+     * @param string $message Message.
+     * @param string $ip IP address.
+     * @return bool True if should log, false if throttled.
      */
-    private function cleanup_old_logs( $table_name ) {
-        global $wpdb;
-
-        // Only run cleanup 1% of the time to reduce overhead
-        if ( wp_rand( 1, 100 ) > 1 ) {
-            return;
+    private function should_log( $type, $message, $ip ) {
+        // NEVER throttle login events - we need every attempt logged for security
+        if ( strpos( $message, 'login' ) !== false || strpos( $message, 'Login' ) !== false ) {
+            return true; // Always log login events
         }
 
-        // Delete logs older than 15 days
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM $table_name WHERE created_at < %s",
-                date( 'Y-m-d H:i:s', strtotime( '-15 days' ) )
-            )
-        );
+        // Create unique key for this event type + message + IP
+        $event_key = md5( $type . $message . $ip );
+        $file = $this->cache_dir . '/log_' . $event_key;
+
+        // If file exists and is recent (within 10 seconds), skip logging
+        if ( file_exists( $file ) && ( time() - filemtime( $file ) < 10 ) ) {
+            return false; // Throttled (same event within 10 seconds)
+        }
+
+        // Create/update throttle file
+        file_put_contents( $file, '1', LOCK_EX );
+        return true; // Allow logging
+    }
+
+    /**
+     * Schedule cleanup (doesn't run immediately)
+     */
+    private function schedule_cleanup() {
+        // Schedule daily cron if not already scheduled
+        if ( ! wp_next_scheduled( 'saurity_daily_cleanup' ) ) {
+            wp_schedule_event( time(), 'daily', 'saurity_daily_cleanup' );
+        }
+    }
+
+    /**
+     * Run daily cleanup (batched for performance)
+     */
+    public function run_daily_cleanup() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'saurity_logs';
+        
+        if ( ! $this->table_exists( $table_name ) ) {
+            return;
+        }
+        
+        // Get configurable retention period (default 15 days)
+        $retention_days = absint( get_option( 'saurity_log_retention_days', 15 ) );
+        $retention_days = max( 1, min( 365, $retention_days ) ); // Ensure within valid range
+        
+        // Delete in batches to prevent table locking
+        $batch_size = 1000;
+        $cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$retention_days} days" ) );
+        
+        do {
+            $deleted = $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM $table_name WHERE created_at < %s LIMIT %d",
+                    $cutoff_date,
+                    $batch_size
+                )
+            );
+            
+            // Small delay between batches to prevent load spike
+            if ( $deleted > 0 ) {
+                usleep( 100000 ); // 0.1 second
+            }
+        } while ( $deleted === $batch_size );
+        
+        // Log cleanup completion
+        $this->log( 'info', 'Daily log cleanup completed' );
     }
 
     /**
@@ -249,12 +372,12 @@ class ActivityLogger {
 
     /**
      * Hook WordPress events for comprehensive logging
+     * 
+     * NOTE: Login/logout events are handled by LoginGateway (has more context)
      */
     public function hook_wordpress_events() {
-        // User authentication events
-        add_action( 'wp_login', [ $this, 'log_user_login' ], 10, 2 );
+        // User authentication events (logout only - login handled by LoginGateway)
         add_action( 'wp_logout', [ $this, 'log_user_logout' ] );
-        add_action( 'wp_login_failed', [ $this, 'log_login_failed' ] );
         
         // Post/Page events
         add_action( 'transition_post_status', [ $this, 'log_post_status_change' ], 10, 3 );
@@ -272,13 +395,9 @@ class ActivityLogger {
         
         // Settings changes
         add_action( 'updated_option', [ $this, 'log_option_update' ], 10, 3 );
-    }
-
-    /**
-     * Log user login
-     */
-    public function log_user_login( $user_login, $user ) {
-        $this->log( 'info', sprintf( 'User "%s" logged in successfully', $user_login ) );
+        
+        // Daily cleanup cron
+        add_action( 'saurity_daily_cleanup', [ $this, 'run_daily_cleanup' ] );
     }
 
     /**
@@ -289,13 +408,6 @@ class ActivityLogger {
         if ( $current_user->user_login ) {
             $this->log( 'info', sprintf( 'User "%s" logged out', $current_user->user_login ) );
         }
-    }
-
-    /**
-     * Log failed login
-     */
-    public function log_login_failed( $username ) {
-        $this->log( 'warning', sprintf( 'Failed login attempt for username "%s"', $username ) );
     }
 
     /**
