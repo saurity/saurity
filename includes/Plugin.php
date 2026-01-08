@@ -49,9 +49,16 @@ class Plugin {
      * Initialize plugin
      */
     public function init() {
-        // Initialize kill switch and logger first (always needed)
+        // Initialize kill switch first (always needed)
         $kill_switch = new KillSwitch();
+        
+        // Initialize logger (conditional based on user preference)
         $logger = new ActivityLogger();
+        $this->components['logger'] = $logger;
+        
+        // Initialize email notifier (must work even when kill switch is on)
+        $this->components['email_notifier'] = new EmailNotifier( $logger );
+        $this->components['email_notifier']->hook();
         
         // Initialize admin interface (always needed for settings access)
         if ( is_admin() ) {
@@ -62,24 +69,62 @@ class Plugin {
         // Check if kill switch is active
         if ( $kill_switch->is_active() ) {
             // All enforcement disabled - skip security components
+            // But email notifier remains active for kill switch/bypass alerts
+            
+            // Initialize dashboard widget (always available)
+            $this->components['dashboard_widget'] = new DashboardWidget( $logger, $kill_switch );
+            $this->components['dashboard_widget']->hook();
+            
             return;
         }
 
-        // Initialize security components only if kill switch is off
-        $this->components['logger'] = $logger;
-        $this->components['rate_limiter'] = new RateLimiter( $logger );
-        $this->components['login_gateway'] = new LoginGateway( $this->components['rate_limiter'], $logger );
-        $this->components['firewall'] = new Firewall( $logger );
+        // Feature toggles - check user preferences
+        $enable_rate_limiting = (bool) get_option( 'saurity_enable_rate_limiting', true );
+        $enable_firewall = (bool) get_option( 'saurity_enable_firewall', true );
+        $enable_logging = (bool) get_option( 'saurity_enable_logging', true );
+        $enable_ip_management = (bool) get_option( 'saurity_enable_ip_management', true );
 
-        // Hook security components
-        foreach ( [ 'rate_limiter', 'login_gateway', 'firewall' ] as $component_name ) {
-            if ( isset( $this->components[ $component_name ] ) && method_exists( $this->components[ $component_name ], 'hook' ) ) {
-                $this->components[ $component_name ]->hook();
-            }
+        // Initialize IP Manager if enabled
+        if ( $enable_ip_management ) {
+            $this->components['ip_manager'] = new IPManager( $logger );
         }
 
-        // Hook WordPress events for comprehensive activity logging
-        $logger->hook_wordpress_events();
+        // Initialize Rate Limiting & Login Protection if enabled
+        if ( $enable_rate_limiting ) {
+            $this->components['rate_limiter'] = new RateLimiter( $logger );
+            $this->components['login_gateway'] = new LoginGateway( $this->components['rate_limiter'], $logger );
+            $this->components['login_gateway']->hook();
+        }
+
+        // Initialize Firewall if enabled
+        if ( $enable_firewall ) {
+            $this->components['firewall'] = new Firewall( $logger );
+            $this->components['firewall']->hook();
+        }
+
+        // Initialize Warning Display (works with both rate limiting and firewall)
+        if ( $enable_rate_limiting || $enable_firewall ) {
+            $this->components['warning_display'] = new WarningDisplay();
+            $this->components['warning_display']->hook();
+        }
+
+        // Hook WordPress events for activity logging if enabled
+        if ( $enable_logging ) {
+            $logger->hook_wordpress_events();
+        }
+        
+        // Initialize dashboard widget (always available for admins)
+        $this->components['dashboard_widget'] = new DashboardWidget( $logger, $kill_switch );
+        $this->components['dashboard_widget']->hook();
+
+        // Initialize Security Reports (always available for admins)
+        if ( is_admin() ) {
+            $this->components['security_reports'] = new SecurityReports( $logger );
+            $this->components['security_reports']->hook();
+
+            $this->components['reports_dashboard'] = new ReportsDashboard( $this->components['security_reports'] );
+            $this->components['reports_dashboard']->hook();
+        }
     }
 
     /**
