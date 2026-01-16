@@ -439,7 +439,7 @@ If Saurity helps secure your WordPress site, please:
 - [GitHub Repository](https://github.com/saurity/saurity)
 - [Report a Bug](https://github.com/saurity/saurity/issues)
 - [Request a Feature](https://github.com/saurity/saurity/issues)
-- [View Changelog](https://github.com/saurity/saurity/blob/main/md/CHANGELOG.md)
+- [View Changelog](https://www.saurity.com/changelog)
 
 ---
 
