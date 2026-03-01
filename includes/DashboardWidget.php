@@ -6,6 +6,10 @@
  */
 
 namespace Saurity;
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * DashboardWidget class - displays security overview on wp-admin dashboard
@@ -211,7 +215,7 @@ class DashboardWidget {
         global $wpdb;
 
         $table_name = $wpdb->prefix . 'saurity_logs';
-        $since = date( 'Y-m-d H:i:s', strtotime( '-24 hours' ) );
+        $since = gmdate( 'Y-m-d H:i:s', strtotime( '-24 hours' ) );
 
         $stats = [
             'failed_logins' => 0,
@@ -220,9 +224,10 @@ class DashboardWidget {
         ];
 
         // Failed logins
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for statistics
         $stats['failed_logins'] = (int) $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name 
+                "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs 
                 WHERE created_at >= %s 
                 AND message LIKE %s",
                 $since,
@@ -231,9 +236,10 @@ class DashboardWidget {
         );
 
         // Successful logins
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for statistics
         $stats['successful_logins'] = (int) $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name 
+                "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs 
                 WHERE created_at >= %s 
                 AND message LIKE %s",
                 $since,
@@ -242,9 +248,10 @@ class DashboardWidget {
         );
 
         // Blocked IPs
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for statistics
         $stats['blocked_ips'] = (int) $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name 
+                "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs 
                 WHERE created_at >= %s 
                 AND message LIKE %s",
                 $since,

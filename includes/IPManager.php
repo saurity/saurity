@@ -37,14 +37,21 @@ class IPManager {
     public function is_allowed( $ip ) {
         $allowlist = $this->get_allowlist();
         
-        // Check exact match first
-        if ( in_array( $ip, $allowlist, true ) ) {
-            return true;
-        }
-        
-        // Check CIDR ranges
         foreach ( $allowlist as $entry ) {
-            if ( $this->ip_in_cidr( $ip, $entry ) ) {
+            // Handle both array format (from bulk operations) and string format
+            $entry_ip = $this->extract_ip_from_entry( $entry );
+            
+            if ( empty( $entry_ip ) ) {
+                continue;
+            }
+            
+            // Check exact match
+            if ( $entry_ip === $ip ) {
+                return true;
+            }
+            
+            // Check CIDR range
+            if ( $this->ip_in_cidr( $ip, $entry_ip ) ) {
                 return true;
             }
         }
@@ -61,18 +68,63 @@ class IPManager {
     public function is_blocked( $ip ) {
         $blocklist = $this->get_blocklist();
         
-        // Check exact match first
-        if ( in_array( $ip, $blocklist, true ) ) {
-            return true;
-        }
-        
-        // Check CIDR ranges
         foreach ( $blocklist as $entry ) {
-            if ( $this->ip_in_cidr( $ip, $entry ) ) {
+            // Handle both array format (from bulk operations) and string format
+            $entry_ip = $this->extract_ip_from_entry( $entry );
+            
+            if ( empty( $entry_ip ) ) {
+                continue;
+            }
+            
+            // Check exact match
+            if ( $entry_ip === $ip ) {
+                return true;
+            }
+            
+            // Check CIDR range
+            if ( $this->ip_in_cidr( $ip, $entry_ip ) ) {
                 return true;
             }
         }
         
+        return false;
+    }
+
+    /**
+     * Extract IP address from entry (handles both string and array formats)
+     *
+     * @param mixed $entry Entry from allowlist/blocklist.
+     * @return string|null IP address or null if invalid.
+     */
+    private function extract_ip_from_entry( $entry ) {
+        // String format (original format)
+        if ( is_string( $entry ) ) {
+            return trim( $entry );
+        }
+        
+        // Array format (from threat feeds bulk import)
+        if ( is_array( $entry ) && isset( $entry['ip'] ) ) {
+            return trim( $entry['ip'] );
+        }
+        
+        // Invalid format
+        return null;
+    }
+
+    /**
+     * Check if an IP exists in a list (handles both string and array formats)
+     *
+     * @param string $ip IP address to check.
+     * @param array  $list The list to search (allowlist or blocklist).
+     * @return bool True if IP exists in list.
+     */
+    private function ip_exists_in_list( $ip, $list ) {
+        foreach ( $list as $entry ) {
+            $entry_ip = $this->extract_ip_from_entry( $entry );
+            if ( $entry_ip === $ip ) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -94,13 +146,13 @@ class IPManager {
         $allowlist = $this->get_allowlist();
         $blocklist = $this->get_blocklist();
         
-        // Check if already in allowlist
-        if ( in_array( $ip, $allowlist, true ) ) {
+        // Check if already in allowlist (handles both string and array formats)
+        if ( $this->ip_exists_in_list( $ip, $allowlist ) ) {
             return 'already_in_allowlist';
         }
 
-        // Check if IP is in blocklist
-        if ( in_array( $ip, $blocklist, true ) ) {
+        // Check if IP is in blocklist (handles both string and array formats)
+        if ( $this->ip_exists_in_list( $ip, $blocklist ) ) {
             return 'already_in_blocklist';
         }
 
@@ -139,13 +191,13 @@ class IPManager {
         $allowlist = $this->get_allowlist();
         $blocklist = $this->get_blocklist();
         
-        // Check if already in blocklist
-        if ( in_array( $ip, $blocklist, true ) ) {
+        // Check if already in blocklist (handles both string and array formats)
+        if ( $this->ip_exists_in_list( $ip, $blocklist ) ) {
             return 'already_in_blocklist';
         }
 
-        // Check if IP is in allowlist
-        if ( in_array( $ip, $allowlist, true ) ) {
+        // Check if IP is in allowlist (handles both string and array formats)
+        if ( $this->ip_exists_in_list( $ip, $allowlist ) ) {
             return 'already_in_allowlist';
         }
 
@@ -162,6 +214,9 @@ class IPManager {
         update_option( 'saurity_ip_blocklist_meta', $metadata );
 
         $this->logger->log( 'warning', "IP/CIDR {$ip} added to permanent blocklist" . ( $reason ? ": {$reason}" : '' ) );
+
+        // Trigger cloud sync hook (Cloudflare integration)
+        do_action( 'saurity_ip_blocked', $ip, $reason );
 
         // Trigger email notification
         do_action( 'saurity_security_alert', 'IP Added to Blocklist', [
@@ -223,6 +278,9 @@ class IPManager {
 
         $this->logger->log( 'info', "IP {$ip} removed from blocklist" );
 
+        // Trigger cloud sync hook (Cloudflare integration)
+        do_action( 'saurity_ip_unblocked', $ip );
+
         return true;
     }
 
@@ -263,6 +321,272 @@ class IPManager {
     }
 
     /**
+     * Get paginated allowlist with search and sorting
+     *
+     * @param int    $page     Current page number.
+     * @param int    $per_page Items per page.
+     * @param string $search   Search term.
+     * @param string $sort_by  Sort by field (ip, note, added).
+     * @param string $order    Sort order (asc, desc).
+     * @return array Array with 'items', 'total', 'pages'.
+     */
+    public function get_allowlist_paginated( $page = 1, $per_page = 20, $search = '', $sort_by = 'added', $order = 'desc' ) {
+        $allowlist = $this->get_allowlist();
+        $metadata = $this->get_allowlist_metadata();
+        
+        // Build combined data array
+        $items = [];
+        foreach ( $allowlist as $ip ) {
+            $meta = $metadata[ $ip ] ?? [];
+            $items[] = [
+                'ip'       => $ip,
+                'note'     => $meta['note'] ?? '',
+                'added'    => $meta['added'] ?? '',
+                'added_by' => $meta['added_by'] ?? '',
+            ];
+        }
+        
+        // Filter by search term
+        if ( ! empty( $search ) ) {
+            $search = strtolower( $search );
+            $items = array_filter( $items, function( $item ) use ( $search ) {
+                return strpos( strtolower( $item['ip'] ), $search ) !== false ||
+                       strpos( strtolower( $item['note'] ), $search ) !== false;
+            } );
+            $items = array_values( $items ); // Re-index
+        }
+        
+        // Sort
+        usort( $items, function( $a, $b ) use ( $sort_by, $order ) {
+            $val_a = $a[ $sort_by ] ?? '';
+            $val_b = $b[ $sort_by ] ?? '';
+            
+            $result = strcmp( $val_a, $val_b );
+            return $order === 'desc' ? -$result : $result;
+        } );
+        
+        // Calculate pagination
+        $total = count( $items );
+        $pages = ceil( $total / $per_page );
+        $offset = ( $page - 1 ) * $per_page;
+        
+        // Slice for current page
+        $items = array_slice( $items, $offset, $per_page );
+        
+        return [
+            'items' => $items,
+            'total' => $total,
+            'pages' => $pages,
+        ];
+    }
+
+    /**
+     * Get paginated blocklist with search and sorting
+     * ENHANCED: Handles both string format and array format (from threat feeds)
+     *
+     * @param int    $page     Current page number.
+     * @param int    $per_page Items per page.
+     * @param string $search   Search term.
+     * @param string $sort_by  Sort by field (ip, reason, added).
+     * @param string $order    Sort order (asc, desc).
+     * @return array Array with 'items', 'total', 'pages'.
+     */
+    public function get_blocklist_paginated( $page = 1, $per_page = 20, $search = '', $sort_by = 'added', $order = 'desc' ) {
+        $blocklist = $this->get_blocklist();
+        $metadata = $this->get_blocklist_metadata();
+        
+        // Build combined data array
+        $items = [];
+        foreach ( $blocklist as $entry ) {
+            // Handle both string and array formats
+            if ( is_array( $entry ) ) {
+                // Array format from threat feeds
+                $ip = isset( $entry['ip'] ) ? $entry['ip'] : '';
+                $items[] = [
+                    'ip'       => $ip,
+                    'reason'   => $entry['reason'] ?? '',
+                    'added'    => $entry['added'] ?? '',
+                    'added_by' => $entry['added_by'] ?? '',
+                ];
+            } else {
+                // String format - use metadata
+                $meta = $metadata[ $entry ] ?? [];
+                $items[] = [
+                    'ip'       => $entry,
+                    'reason'   => $meta['reason'] ?? '',
+                    'added'    => $meta['added'] ?? '',
+                    'added_by' => $meta['added_by'] ?? '',
+                ];
+            }
+        }
+        
+        // Filter by search term
+        if ( ! empty( $search ) ) {
+            $search = strtolower( $search );
+            $items = array_filter( $items, function( $item ) use ( $search ) {
+                return strpos( strtolower( $item['ip'] ), $search ) !== false ||
+                       strpos( strtolower( $item['reason'] ), $search ) !== false;
+            } );
+            $items = array_values( $items ); // Re-index
+        }
+        
+        // Sort
+        usort( $items, function( $a, $b ) use ( $sort_by, $order ) {
+            $val_a = $a[ $sort_by ] ?? '';
+            $val_b = $b[ $sort_by ] ?? '';
+            
+            $result = strcmp( $val_a, $val_b );
+            return $order === 'desc' ? -$result : $result;
+        } );
+        
+        // Calculate pagination
+        $total = count( $items );
+        $pages = ceil( $total / $per_page );
+        $offset = ( $page - 1 ) * $per_page;
+        
+        // Slice for current page
+        $items = array_slice( $items, $offset, $per_page );
+        
+        return [
+            'items' => $items,
+            'total' => $total,
+            'pages' => $pages,
+        ];
+    }
+
+    /**
+     * Bulk remove IPs from allowlist
+     *
+     * @param array $ips Array of IP addresses.
+     * @return int Number of IPs removed.
+     */
+    public function bulk_remove_from_allowlist( $ips ) {
+        $count = 0;
+        foreach ( $ips as $ip ) {
+            if ( $this->remove_from_allowlist( $ip ) ) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Bulk remove IPs from blocklist
+     *
+     * @param array $ips Array of IP addresses.
+     * @return int Number of IPs removed.
+     */
+    public function bulk_remove_from_blocklist( $ips ) {
+        $count = 0;
+        foreach ( $ips as $ip ) {
+            if ( $this->remove_from_blocklist( $ip ) ) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Bulk move IPs from blocklist to allowlist
+     *
+     * @param array $ips Array of IP addresses.
+     * @return int Number of IPs moved.
+     */
+    public function bulk_move_to_allowlist( $ips ) {
+        $count = 0;
+        foreach ( $ips as $ip ) {
+            if ( $this->remove_from_blocklist( $ip ) ) {
+                if ( $this->add_to_allowlist( $ip, 'Moved from blocklist' ) === true ) {
+                    $count++;
+                }
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Bulk move IPs from allowlist to blocklist
+     *
+     * @param array $ips Array of IP addresses.
+     * @return int Number of IPs moved.
+     */
+    public function bulk_move_to_blocklist( $ips ) {
+        $count = 0;
+        foreach ( $ips as $ip ) {
+            if ( $this->remove_from_allowlist( $ip ) ) {
+                if ( $this->add_to_blocklist( $ip, 'Moved from allowlist' ) === true ) {
+                    $count++;
+                }
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Get statistics for IP lists
+     * ENHANCED: Handles both string format and array format (from threat feeds)
+     *
+     * @return array
+     */
+    public function get_statistics() {
+        $allowlist = $this->get_allowlist();
+        $blocklist = $this->get_blocklist();
+        $allowlist_meta = $this->get_allowlist_metadata();
+        $blocklist_meta = $this->get_blocklist_metadata();
+        
+        // Count CIDR ranges vs single IPs
+        $allowlist_cidr = 0;
+        $allowlist_single = 0;
+        foreach ( $allowlist as $entry ) {
+            $ip = $this->extract_ip_from_entry( $entry );
+            if ( ! empty( $ip ) && strpos( $ip, '/' ) !== false ) {
+                $allowlist_cidr++;
+            } else {
+                $allowlist_single++;
+            }
+        }
+        
+        $blocklist_cidr = 0;
+        $blocklist_single = 0;
+        foreach ( $blocklist as $entry ) {
+            $ip = $this->extract_ip_from_entry( $entry );
+            if ( ! empty( $ip ) && strpos( $ip, '/' ) !== false ) {
+                $blocklist_cidr++;
+            } else {
+                $blocklist_single++;
+            }
+        }
+        
+        // Get recent additions (last 7 days)
+        $week_ago = strtotime( '-7 days' );
+        $recent_allowlist = 0;
+        $recent_blocklist = 0;
+        
+        foreach ( $allowlist_meta as $meta ) {
+            if ( ! empty( $meta['added'] ) && strtotime( $meta['added'] ) >= $week_ago ) {
+                $recent_allowlist++;
+            }
+        }
+        
+        foreach ( $blocklist_meta as $meta ) {
+            if ( ! empty( $meta['added'] ) && strtotime( $meta['added'] ) >= $week_ago ) {
+                $recent_blocklist++;
+            }
+        }
+        
+        return [
+            'allowlist_total'   => count( $allowlist ),
+            'allowlist_cidr'    => $allowlist_cidr,
+            'allowlist_single'  => $allowlist_single,
+            'blocklist_total'   => count( $blocklist ),
+            'blocklist_cidr'    => $blocklist_cidr,
+            'blocklist_single'  => $blocklist_single,
+            'recent_allowlist'  => $recent_allowlist,
+            'recent_blocklist'  => $recent_blocklist,
+        ];
+    }
+
+    /**
      * Get current user's IP
      *
      * @return string
@@ -271,14 +595,15 @@ class IPManager {
         $ip = '';
 
         if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
-            $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+            $ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
         } elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-            $ip = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] )[0];
+            $forwarded = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+            $ip = explode( ',', $forwarded )[0];
         } elseif ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
-            $ip = $_SERVER['REMOTE_ADDR'];
+            $ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
         }
 
-        return sanitize_text_field( trim( $ip ) );
+        return trim( $ip );
     }
 
     /**
@@ -365,6 +690,7 @@ class IPManager {
         $allowlist = $this->get_allowlist();
         $metadata = $this->get_allowlist_metadata();
         
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Using php://temp for in-memory CSV generation
         $output = fopen( 'php://temp', 'r+' );
         
         // Add BOM for Excel UTF-8 compatibility
@@ -386,6 +712,7 @@ class IPManager {
         
         rewind( $output );
         $csv = stream_get_contents( $output );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing php://temp stream
         fclose( $output );
         
         return $csv;
@@ -400,6 +727,7 @@ class IPManager {
         $blocklist = $this->get_blocklist();
         $metadata = $this->get_blocklist_metadata();
         
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Using php://temp for in-memory CSV generation
         $output = fopen( 'php://temp', 'r+' );
         
         // Add BOM for Excel UTF-8 compatibility
@@ -421,6 +749,7 @@ class IPManager {
         
         rewind( $output );
         $csv = stream_get_contents( $output );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing php://temp stream
         fclose( $output );
         
         return $csv;

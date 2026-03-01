@@ -7,6 +7,11 @@
 
 namespace Saurity;
 
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 /**
  * ReportsDashboard class - admin interface for security reports
  */
@@ -61,10 +66,10 @@ class ReportsDashboard {
             return;
         }
 
-        // Enqueue Chart.js from CDN
+        // Enqueue Chart.js from local assets (bundled with plugin)
         wp_enqueue_script(
             'chartjs',
-            'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+            plugins_url( 'assets/chart.min.js', dirname( __FILE__ ) ),
             [],
             '4.4.0',
             true
@@ -80,6 +85,7 @@ class ReportsDashboard {
         }
 
         // Get current report or generate new one
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- This is view navigation, not form submission
         $report_id = isset( $_GET['report_id'] ) ? absint( $_GET['report_id'] ) : null;
         
         if ( $report_id ) {
@@ -153,8 +159,8 @@ class ReportsDashboard {
         $score = $report['security_score'];
         $score_class = $score >= 80 ? 'excellent' : ( $score >= 60 ? 'good' : 'needs-improvement' );
         
-        $start_date = date( 'M d, Y', strtotime( $data['period']['start'] ) );
-        $end_date = date( 'M d, Y', strtotime( $data['period']['end'] ) );
+        $start_date = gmdate( 'M d, Y', strtotime( $data['period']['start'] ) );
+        $end_date = gmdate( 'M d, Y', strtotime( $data['period']['end'] ) );
         ?>
 
         <!-- Report Header -->
@@ -163,7 +169,7 @@ class ReportsDashboard {
                 <strong>Report Period:</strong> <?php echo esc_html( $start_date ); ?> - <?php echo esc_html( $end_date ); ?>
             </div>
             <div class="report-date">
-                Generated: <?php echo esc_html( date( 'M d, Y g:i A', strtotime( $report['created_at'] ) ) ); ?>
+                Generated: <?php echo esc_html( gmdate( 'M d, Y g:i A', strtotime( $report['created_at'] ) ) ); ?>
             </div>
         </div>
 
@@ -337,8 +343,8 @@ class ReportsDashboard {
                         ?>
                         <tr>
                             <td>
-                                <?php echo esc_html( date( 'M d', strtotime( $data['period']['start'] ) ) ); ?> - 
-                                <?php echo esc_html( date( 'M d, Y', strtotime( $data['period']['end'] ) ) ); ?>
+                                <?php echo esc_html( gmdate( 'M d', strtotime( $data['period']['start'] ) ) ); ?> - 
+                                <?php echo esc_html( gmdate( 'M d, Y', strtotime( $data['period']['end'] ) ) ); ?>
                             </td>
                             <td>
                                 <span class="score-badge <?php echo esc_attr( $score_class ); ?>">
@@ -348,7 +354,7 @@ class ReportsDashboard {
                             <td><?php echo esc_html( number_format( $data['summary']['total_events'] ) ); ?></td>
                             <td><?php echo esc_html( number_format( $data['summary']['failed_logins'] ) ); ?></td>
                             <td><?php echo esc_html( number_format( $data['summary']['blocked_ips'] ) ); ?></td>
-                            <td><?php echo esc_html( date( 'M d, Y', strtotime( $report['created_at'] ) ) ); ?></td>
+                            <td><?php echo esc_html( gmdate( 'M d, Y', strtotime( $report['created_at'] ) ) ); ?></td>
                             <td>
                                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=saurity-reports&report_id=' . $report['id'] ) ); ?>" 
                                    class="button button-small">View</a>
@@ -900,9 +906,9 @@ class ReportsDashboard {
     private function generate_pdf_export( $report ) {
         $data = $report['report_data'];
         $score = $report['security_score'];
-        $start_date = date( 'M d, Y', strtotime( $data['period']['start'] ) );
-        $end_date = date( 'M d, Y', strtotime( $data['period']['end'] ) );
-        $filename = 'saurity-security-report-' . date( 'Y-m-d', strtotime( $data['period']['start'] ) ) . '.html';
+        $start_date = gmdate( 'M d, Y', strtotime( $data['period']['start'] ) );
+        $end_date = gmdate( 'M d, Y', strtotime( $data['period']['end'] ) );
+        $filename = 'saurity-security-report-' . gmdate( 'Y-m-d', strtotime( $data['period']['start'] ) ) . '.html';
 
         // Set headers for HTML display (can be converted to PDF by browser)
         header( 'Content-Type: text/html; charset=utf-8' );
@@ -942,7 +948,7 @@ class ReportsDashboard {
             <div class="header">
                 <h1>Security Report</h1>
                 <p><strong>Report Period:</strong> <?php echo esc_html( $start_date ); ?> - <?php echo esc_html( $end_date ); ?></p>
-                <p><strong>Generated:</strong> <?php echo esc_html( date( 'M d, Y g:i A', strtotime( $report['created_at'] ) ) ); ?></p>
+                <p><strong>Generated:</strong> <?php echo esc_html( gmdate( 'M d, Y g:i A', strtotime( $report['created_at'] ) ) ); ?></p>
                 <p><strong>Site:</strong> <?php echo esc_html( get_bloginfo( 'name' ) ); ?></p>
             </div>
 
@@ -1061,7 +1067,7 @@ class ReportsDashboard {
      */
     private function generate_csv_export( $report ) {
         $data = $report['report_data'];
-        $start_date = date( 'Y-m-d', strtotime( $data['period']['start'] ) );
+        $start_date = gmdate( 'Y-m-d', strtotime( $data['period']['start'] ) );
         $filename = 'saurity-security-report-' . $start_date . '.csv';
 
         header( 'Content-Type: text/csv; charset=utf-8' );
@@ -1076,8 +1082,8 @@ class ReportsDashboard {
 
         // Summary section
         fputcsv( $output, [ 'Security Report Summary' ] );
-        fputcsv( $output, [ 'Report Period', date( 'M d, Y', strtotime( $data['period']['start'] ) ) . ' - ' . date( 'M d, Y', strtotime( $data['period']['end'] ) ) ] );
-        fputcsv( $output, [ 'Generated', date( 'M d, Y g:i A', strtotime( $report['created_at'] ) ) ] );
+        fputcsv( $output, [ 'Report Period', gmdate( 'M d, Y', strtotime( $data['period']['start'] ) ) . ' - ' . gmdate( 'M d, Y', strtotime( $data['period']['end'] ) ) ] );
+        fputcsv( $output, [ 'Generated', gmdate( 'M d, Y g:i A', strtotime( $report['created_at'] ) ) ] );
         fputcsv( $output, [ 'Security Score', $report['security_score'] . '/100' ] );
         fputcsv( $output, [] );
 
@@ -1138,6 +1144,7 @@ class ReportsDashboard {
             }
         }
 
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing php://output stream
         fclose( $output );
     }
 }

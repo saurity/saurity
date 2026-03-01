@@ -7,6 +7,11 @@
 
 namespace Saurity;
 
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 /**
  * ActivityLogger class - human-readable logging with DoS protection
  */
@@ -33,7 +38,16 @@ class ActivityLogger {
         // Use same cache directory as Firewall/RateLimiter
         $this->cache_dir = sys_get_temp_dir() . '/saurity_firewall';
         if ( ! file_exists( $this->cache_dir ) ) {
-            @mkdir( $this->cache_dir, 0755, true );
+            wp_mkdir_p( $this->cache_dir );
+        }
+
+        // ALWAYS register cleanup cron handler (even if logging is disabled)
+        // This ensures old logs are cleaned up regardless of logging status
+        add_action( 'saurity_daily_cleanup', [ $this, 'run_daily_cleanup' ] );
+        
+        // Schedule cleanup cron if not already scheduled
+        if ( ! wp_next_scheduled( 'saurity_daily_cleanup' ) ) {
+            wp_schedule_event( time(), 'daily', 'saurity_daily_cleanup' );
         }
     }
 
@@ -51,6 +65,9 @@ class ActivityLogger {
         }
 
         $ip_address = $context['ip'] ?? $this->get_client_ip();
+
+        // Enrich context with GeoIP data if available
+        $context = apply_filters( 'saurity_enrich_log_data', $context, $ip_address );
 
         // THROTTLING: Prevent same IP from logging same event too frequently
         // This protects database during attacks (10,000 req/s would = 10,000 DB writes)
@@ -71,6 +88,10 @@ class ActivityLogger {
         // Use WordPress timezone for logging (already in local time)
         $timestamp = current_time( 'mysql' );
 
+        // Serialize context for storage
+        $context_data = maybe_serialize( $context );
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct DB required for security logging
         $wpdb->insert(
             $table_name,
             [
@@ -78,14 +99,15 @@ class ActivityLogger {
                 'message' => sanitize_textarea_field( $message ),
                 'ip_address' => $ip_address,
                 'user_login' => $user_login,
+                'context' => $context_data,
                 'created_at' => $timestamp,
             ],
-            [ '%s', '%s', '%s', '%s', '%s' ]
+            [ '%s', '%s', '%s', '%s', '%s', '%s' ]
         );
 
         // Clear dashboard cache occasionally (5% chance to avoid constant DB writes)
         // Transient expires naturally anyway, so this is just for freshness
-        if ( rand( 1, 20 ) === 1 ) {
+        if ( wp_rand( 1, 20 ) === 1 ) {
             delete_transient( 'saurity_dashboard_data' );
         }
 
@@ -115,37 +137,104 @@ class ActivityLogger {
         $per_page = absint( $per_page );
         $offset = ( $page - 1 ) * $per_page;
 
-        // Build WHERE clause
-        $where_conditions = [];
+        // Build query based on filters - use separate prepared queries for each case
+        // This avoids dynamic WHERE concatenation which triggers PHPCS warnings
         
-        if ( ! empty( $type ) ) {
-            $where_conditions[] = $wpdb->prepare( 'event_type = %s', $type );
-        }
+        $has_type = ! empty( $type );
+        $has_search = ! empty( $search );
 
-        if ( ! empty( $search ) ) {
+        // Get total count and results based on filter combination
+        if ( $has_type && $has_search ) {
+            // Both type and search filters
             $search_term = '%' . $wpdb->esc_like( $search ) . '%';
-            $where_conditions[] = $wpdb->prepare(
-                '(message LIKE %s OR ip_address LIKE %s OR user_login LIKE %s)',
-                $search_term,
-                $search_term,
-                $search_term
+            
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $total = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs WHERE event_type = %s AND (message LIKE %s OR ip_address LIKE %s OR user_login LIKE %s)",
+                    $type,
+                    $search_term,
+                    $search_term,
+                    $search_term
+                )
+            );
+            
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}saurity_logs WHERE event_type = %s AND (message LIKE %s OR ip_address LIKE %s OR user_login LIKE %s) ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    $type,
+                    $search_term,
+                    $search_term,
+                    $search_term,
+                    $per_page,
+                    $offset
+                ),
+                ARRAY_A
+            );
+        } elseif ( $has_type ) {
+            // Type filter only
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $total = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs WHERE event_type = %s",
+                    $type
+                )
+            );
+            
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}saurity_logs WHERE event_type = %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    $type,
+                    $per_page,
+                    $offset
+                ),
+                ARRAY_A
+            );
+        } elseif ( $has_search ) {
+            // Search filter only
+            $search_term = '%' . $wpdb->esc_like( $search ) . '%';
+            
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $total = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs WHERE (message LIKE %s OR ip_address LIKE %s OR user_login LIKE %s)",
+                    $search_term,
+                    $search_term,
+                    $search_term
+                )
+            );
+            
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}saurity_logs WHERE (message LIKE %s OR ip_address LIKE %s OR user_login LIKE %s) ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    $search_term,
+                    $search_term,
+                    $search_term,
+                    $per_page,
+                    $offset
+                ),
+                ARRAY_A
+            );
+        } else {
+            // No filters
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $total = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}saurity_logs"
+            );
+            
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for security logs
+            $results = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}saurity_logs ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    $per_page,
+                    $offset
+                ),
+                ARRAY_A
             );
         }
-
-        $where = '';
-        if ( ! empty( $where_conditions ) ) {
-            $where = ' WHERE ' . implode( ' AND ', $where_conditions );
-        }
-
-        // Get total count
-        $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table_name" . $where );
-
-        // Get paginated results
-        $sql = "SELECT * FROM $table_name" . $where . " ORDER BY created_at DESC LIMIT $per_page OFFSET $offset";
-        $results = $wpdb->get_results( $sql, ARRAY_A );
-
-        // Timestamps are already in WordPress timezone (from current_time)
-        // No conversion needed for display
 
         return [
             'logs' => $results ?: [],
@@ -179,8 +268,9 @@ class ActivityLogger {
             return [];
         }
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for statistics
         $results = $wpdb->get_results(
-            "SELECT event_type, COUNT(*) as count FROM $table_name GROUP BY event_type",
+            "SELECT event_type, COUNT(*) as count FROM {$wpdb->prefix}saurity_logs GROUP BY event_type",
             ARRAY_A
         );
 
@@ -213,7 +303,7 @@ class ActivityLogger {
      */
     private function get_client_ip() {
         // Default to REMOTE_ADDR (cannot be spoofed by client)
-        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
 
         // Only check proxy headers if explicitly configured
         // This prevents IP spoofing in logs during forensic analysis
@@ -266,8 +356,10 @@ class ActivityLogger {
         }
 
         global $wpdb;
-        $query = $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name );
-        self::$table_exists_cache = (bool) $wpdb->get_var( $query );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for table check
+        self::$table_exists_cache = (bool) $wpdb->get_var(
+            $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name )
+        );
 
         return self::$table_exists_cache;
     }
@@ -339,12 +431,13 @@ class ActivityLogger {
         
         // Delete in batches to prevent table locking
         $batch_size = 1000;
-        $cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$retention_days} days" ) );
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$retention_days} days" ) );
         
         do {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for cleanup
             $deleted = $wpdb->query(
                 $wpdb->prepare(
-                    "DELETE FROM $table_name WHERE created_at < %s LIMIT %d",
+                    "DELETE FROM {$wpdb->prefix}saurity_logs WHERE created_at < %s LIMIT %d",
                     $cutoff_date,
                     $batch_size
                 )
@@ -367,6 +460,7 @@ class ActivityLogger {
         global $wpdb;
 
         $table_name = $wpdb->prefix . 'saurity_logs';
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name safe (uses $wpdb->prefix), direct DB required for truncation
         $wpdb->query( "TRUNCATE TABLE $table_name" );
     }
 
@@ -396,8 +490,8 @@ class ActivityLogger {
         // Settings changes
         add_action( 'updated_option', [ $this, 'log_option_update' ], 10, 3 );
         
-        // Daily cleanup cron
-        add_action( 'saurity_daily_cleanup', [ $this, 'run_daily_cleanup' ] );
+        // Note: Daily cleanup cron is now registered in constructor
+        // to ensure it always runs regardless of logging being enabled
     }
 
     /**

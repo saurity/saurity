@@ -1,11 +1,16 @@
 <?php
 /**
- * Lightweight Firewall
+ * Firewall Security Component
  *
  * @package Saurity
  */
 
 namespace Saurity;
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * Firewall class - CONTENT INSPECTION ONLY
@@ -126,6 +131,7 @@ class Firewall extends SecurityComponent {
         $ip_manager = $plugin->get_component( 'ip_manager' );
 
         // Priority 1: Check IPManager permanent blocklist (Admin UI)
+        // Note: Even admins can be in blocklist if manually added
         if ( $ip_manager && $ip_manager->is_blocked( $this->client_ip ) ) {
             $this->block( 'IP address permanently blocked' );
         }
@@ -140,26 +146,43 @@ class Firewall extends SecurityComponent {
             return;
         }
 
-        // Priority 4: Check Honeypot (100% bot detection, zero false positives)
+        // Priority 4: CRITICAL - Bypass security for logged-in users with capabilities
+        // This MUST come before country blocking to prevent admin lockout
+        // Note: is_user_logged_in() works at init priority 0 because WordPress
+        // authenticates users during plugins_loaded via wp_cookie_constants
+        if ( is_user_logged_in() ) {
+            // Check if user has admin/editor capabilities
+            if ( current_user_can( 'manage_options' ) || current_user_can( 'edit_posts' ) ) {
+                // Trusted users only need rate limiting checks, not content inspection
+                if ( $this->rate_limiter->is_xmlrpc_abuse() ) {
+                    $this->block( 'XML-RPC abuse detected' );
+                }
+                if ( $this->rate_limiter->is_post_flood() ) {
+                    $this->block( 'POST flood detected' );
+                }
+                return; // Skip all other checks for trusted logged-in users
+            }
+            // Regular logged-in users (subscribers, etc.) continue with checks
+            // but skip country blocking to prevent lockout
+        }
+
+        // Priority 5: Check Honeypot (100% bot detection, zero false positives)
+        // Skip for logged-in users (checked inside method)
         if ( $this->check_honeypot() ) {
             $this->block( 'Bot detected (honeypot field filled)' );
         }
 
-        // Priority 5: Check Form Timing (humans take time to type)
+        // Priority 6: Check Form Timing (humans take time to type)
+        // Skip for logged-in users (checked inside method)
         if ( $this->check_form_timing() ) {
             $this->block( 'Bot detected (form submitted too quickly)' );
         }
 
-        // Early exit: Skip heavy scanning for trusted users
-        if ( current_user_can( 'manage_options' ) || current_user_can( 'edit_posts' ) ) {
-            // SEPARATION OF CONCERNS: Delegate frequency checks to RateLimiter
-            if ( $this->rate_limiter->is_xmlrpc_abuse() ) {
-                $this->block( 'XML-RPC abuse detected' );
-            }
-            if ( $this->rate_limiter->is_post_flood() ) {
-                $this->block( 'POST flood detected' );
-            }
-            return; // Skip content inspection for trusted users
+        // Priority 7: Check country-based blocking (GeoIP)
+        // IMPORTANT: Skip for ALL logged-in users to prevent self-lockout
+        // Note: First param is the default return value (filtered value), second param is the IP to check
+        if ( ! is_user_logged_in() && apply_filters( 'saurity_check_ip_country', false, $this->client_ip ) ) {
+            $this->block( 'Access denied from your country' );
         }
 
         // SEPARATION OF CONCERNS: All frequency/velocity checks delegated to RateLimiter
@@ -205,15 +228,15 @@ class Firewall extends SecurityComponent {
 
     /**
      * Check for sensitive path access (CONTENT INSPECTION)
+     * Checks both REQUEST_URI and query parameters for path traversal attempts
      *
      * @return bool
      */
     private function is_sensitive_path() {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
         $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-
-        if ( empty( $request_uri ) ) {
-            return false;
-        }
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
+        $query_string = isset( $_SERVER['QUERY_STRING'] ) ? sanitize_text_field( wp_unslash( $_SERVER['QUERY_STRING'] ) ) : '';
 
         $blocked_paths = [
             '/.env',
@@ -222,13 +245,56 @@ class Firewall extends SecurityComponent {
             '/configuration.php',
             '/phpmyadmin',
             '/admin/config.php',
-            '/.aws/',
-            '/.ssh/',
+            '/.aws',
+            '/.ssh',
+            '/wp-config.php',
+            '/.htaccess',
+            '/.htpasswd',
+            '/etc/passwd',
+            '/etc/shadow',
+            '../',  // Path traversal
+            '..\\', // Windows path traversal
         ];
 
-        foreach ( $blocked_paths as $path ) {
-            if ( strpos( $request_uri, $path ) !== false ) {
-                return true;
+        // Check REQUEST_URI
+        if ( ! empty( $request_uri ) ) {
+            // Decode URL to catch encoded attacks
+            $decoded_uri = urldecode( $request_uri );
+            
+            foreach ( $blocked_paths as $path ) {
+                if ( stripos( $request_uri, $path ) !== false || stripos( $decoded_uri, $path ) !== false ) {
+                    return true;
+                }
+            }
+        }
+
+        // Check query string for path traversal in parameters
+        if ( ! empty( $query_string ) ) {
+            $decoded_query = urldecode( $query_string );
+            
+            foreach ( $blocked_paths as $path ) {
+                if ( stripos( $query_string, $path ) !== false || stripos( $decoded_query, $path ) !== false ) {
+                    return true;
+                }
+            }
+        }
+
+        // Check GET parameters for file inclusion attempts
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Security check for malicious paths, not form processing
+        if ( ! empty( $_GET ) ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Security check for malicious paths
+            foreach ( $_GET as $key => $value ) {
+                if ( ! is_string( $value ) ) {
+                    continue;
+                }
+                
+                $decoded_value = urldecode( $value );
+                
+                foreach ( $blocked_paths as $path ) {
+                    if ( stripos( $value, $path ) !== false || stripos( $decoded_value, $path ) !== false ) {
+                        return true;
+                    }
+                }
             }
         }
 
@@ -241,6 +307,7 @@ class Firewall extends SecurityComponent {
      * @return bool
      */
     private function is_method_abuse() {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check, defaults to GET
         $method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
 
         $allowed_methods = [ 'GET', 'POST', 'HEAD', 'OPTIONS' ];
@@ -251,6 +318,7 @@ class Firewall extends SecurityComponent {
 
         // Block POST to static file endpoints
         if ( $method === 'POST' ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
             $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
             
             $static_extensions = [ '.css', '.js', '.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf' ];
@@ -279,7 +347,9 @@ class Firewall extends SecurityComponent {
         }
         
         // Only check POST requests
-        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
+        $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+        if ( $request_method !== 'POST' ) {
             return false;
         }
         
@@ -290,11 +360,14 @@ class Firewall extends SecurityComponent {
         
         // Check if honeypot field is filled (100% bot detection)
         // Field name: website_url_check (sounds legitimate to bots)
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bot detection check, not form processing
         if ( ! empty( $_POST['website_url_check'] ) ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bot detection check, not form processing
+            $honeypot_value = sanitize_text_field( wp_unslash( $_POST['website_url_check'] ) );
             $this->logger->log(
                 'warning',
                 'Bot detected via honeypot field',
-                [ 'ip' => $this->client_ip, 'value' => substr( $_POST['website_url_check'], 0, 50 ) ]
+                [ 'ip' => $this->client_ip, 'value' => substr( $honeypot_value, 0, 50 ) ]
             );
             return true;
         }
@@ -316,7 +389,9 @@ class Firewall extends SecurityComponent {
         }
         
         // Only check POST requests
-        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
+        $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+        if ( $request_method !== 'POST' ) {
             return false;
         }
         
@@ -326,12 +401,14 @@ class Firewall extends SecurityComponent {
         }
         
         // Check if timing token exists
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bot timing detection, not form processing
         if ( empty( $_POST['saurity_form_time'] ) ) {
             return false; // No token = don't check (form might not have it)
         }
         
         // Decrypt and validate token
-        $token = sanitize_text_field( $_POST['saurity_form_time'] );
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bot timing detection, not form processing
+        $token = sanitize_text_field( wp_unslash( $_POST['saurity_form_time'] ) );
         $timestamp = $this->decrypt_timestamp( $token );
         
         if ( false === $timestamp ) {
@@ -427,7 +504,7 @@ class Firewall extends SecurityComponent {
      * @return bool
      */
     private function is_malicious_user_agent() {
-        $user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? strtolower( $_SERVER['HTTP_USER_AGENT'] ) : '';
+        $user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? strtolower( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) ) : '';
 
         if ( empty( $user_agent ) ) {
             return false;
@@ -474,7 +551,9 @@ class Firewall extends SecurityComponent {
      * @return bool
      */
     private function is_suspicious_referer() {
-        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
+        $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+        if ( $request_method !== 'POST' ) {
             return false;
         }
 
@@ -482,8 +561,8 @@ class Firewall extends SecurityComponent {
             return false;
         }
 
-        $referer = isset( $_SERVER['HTTP_REFERER'] ) ? strtolower( $_SERVER['HTTP_REFERER'] ) : '';
-        $host = isset( $_SERVER['HTTP_HOST'] ) ? strtolower( $_SERVER['HTTP_HOST'] ) : '';
+        $referer = isset( $_SERVER['HTTP_REFERER'] ) ? strtolower( sanitize_text_field( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) ) : '';
+        $host = isset( $_SERVER['HTTP_HOST'] ) ? strtolower( sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) ) : '';
 
         if ( empty( $referer ) ) {
             return false;
@@ -543,25 +622,50 @@ class Firewall extends SecurityComponent {
     private function has_sql_injection() {
         $check_values = [];
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Security check for SQL injection, not form processing
         if ( ! empty( $_GET ) ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Security check for SQL injection
             $check_values = array_merge( $check_values, $_GET );
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Security check for SQL injection, not form processing
         if ( ! empty( $_POST ) && ! isset( $_POST['comment'] ) && ! isset( $_POST['content'] ) ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Security check for SQL injection
             $check_values = array_merge( $check_values, $_POST );
         }
 
+        // Add raw REQUEST_URI and QUERY_STRING (without sanitization that might strip quotes)
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Raw value needed for security pattern matching
         if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-            $check_values[] = $_SERVER['REQUEST_URI'];
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Raw value needed for pattern matching
+            $check_values[] = wp_unslash( $_SERVER['REQUEST_URI'] );
         }
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Raw value needed for security pattern matching
         if ( isset( $_SERVER['QUERY_STRING'] ) ) {
-            $check_values[] = $_SERVER['QUERY_STRING'];
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Raw value needed for pattern matching
+            $check_values[] = wp_unslash( $_SERVER['QUERY_STRING'] );
         }
 
+        // Pattern 1: Common SQL commands
         $sql_pattern = '/\b(union[\s\+]+select|insert[\s\+]+into|delete[\s\+]+from|drop[\s\+]+table|update.+set.+where|exec[\s\+]+(s|x)p\w+|benchmark\s*\(|sleep\s*\(|waitfor\s+delay|load_file\s*\(|into\s+outfile)\b/i';
+        
+        // Pattern 2: Hexadecimal values (often used to bypass filters)
         $hex_pattern = '/\b0x[0-9a-f]{2,}\b/i';
-        $boolean_pattern = '/(\bor\b|\band\b)\s+[\d\'\"]+\s*=\s*[\d\'\"]+/i';
+        
+        // Pattern 3: Boolean-based injection - OR/AND with comparison
+        // Matches: OR '1'='1', AND 1=1, OR "a"="a", etc.
+        $boolean_pattern = '/(\bor\b|\band\b)\s+[\'\"0-9]+\s*=\s*[\'\"0-9]+/i';
+        
+        // Pattern 4: Tautology patterns - always true conditions
+        // Matches: '1'='1', "1"="1", 1=1, 'a'='a', etc.
+        $tautology_pattern = '/[\'"][^\'"\s]+[\'"]\s*=\s*[\'"][^\'"\s]+[\'"]/i';
+        
+        // Pattern 5: Comment-based injection (SQL comments to bypass)
+        $comment_pattern = '/(--|#|\/\*.*\*\/)/';
+        
+        // Pattern 6: CHAR/CONCAT functions often used in injection
+        $function_pattern = '/\b(char|concat|ascii|substring|substr|mid|ord|hex|unhex|conv)\s*\(/i';
 
         foreach ( $check_values as $value ) {
             if ( ! is_string( $value ) ) {
@@ -596,6 +700,18 @@ class Firewall extends SecurityComponent {
                 if ( preg_match( $boolean_pattern, $test_value ) ) {
                     return true;
                 }
+
+                if ( preg_match( $tautology_pattern, $test_value ) ) {
+                    return true;
+                }
+
+                if ( preg_match( $comment_pattern, $test_value ) ) {
+                    return true;
+                }
+
+                if ( preg_match( $function_pattern, $test_value ) ) {
+                    return true;
+                }
             }
         }
 
@@ -611,20 +727,24 @@ class Firewall extends SecurityComponent {
     private function has_xss_attempt() {
         $check_values = [];
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Security check for XSS, not form processing
         if ( ! empty( $_GET ) ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Security check for XSS
             $check_values = array_merge( $check_values, $_GET );
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Security check for XSS, not form processing
         if ( ! empty( $_POST ) && ! isset( $_POST['comment'] ) && ! isset( $_POST['content'] ) ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Security check for XSS
             $check_values = array_merge( $check_values, $_POST );
         }
 
         if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-            $check_values[] = $_SERVER['REQUEST_URI'];
+            $check_values[] = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
         }
 
         if ( isset( $_SERVER['QUERY_STRING'] ) ) {
-            $check_values[] = $_SERVER['QUERY_STRING'];
+            $check_values[] = sanitize_text_field( wp_unslash( $_SERVER['QUERY_STRING'] ) );
         }
 
         $xss_pattern = '/<(script|iframe|embed|object)[^>]*>|javascript:|vbscript:|on\w+\s*=|eval\s*\(|expression\s*\(|document\.(cookie|write)|window\.location/i';

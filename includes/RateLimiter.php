@@ -307,7 +307,9 @@ class RateLimiter extends SecurityComponent {
             return false;
         }
         
-        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
+        $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+        if ( $request_method !== 'POST' ) {
             return false;
         }
 
@@ -317,10 +319,14 @@ class RateLimiter extends SecurityComponent {
         }
 
         // Detect Login Page - Skip POST flood check (handled by check() method)
-        $is_login = ( 
-            strpos( $_SERVER['REQUEST_URI'], 'wp-login.php' ) !== false ||
-            strpos( $_SERVER['REQUEST_URI'], 'xmlrpc.php' ) !== false ||
-            isset( $_POST['log'] )
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- Validated with isset check
+        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+        // Security check for POST flood detection, not form processing.
+        // We only check if $_POST['log'] exists to detect login page, no data is processed.
+        $is_login = (
+            strpos( $request_uri, 'wp-login.php' ) !== false ||
+            strpos( $request_uri, 'xmlrpc.php' ) !== false ||
+            isset( $_POST['log'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only checking existence for login page detection, no data processed
         );
 
         if ( $is_login ) {
@@ -335,7 +341,7 @@ class RateLimiter extends SecurityComponent {
         // --- DEFINE IDENTIFIERS ---
         
         // Tier 1 ID: The Specific Device (IP + User Agent)
-        $user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : '';
+        $user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
         $device_id  = $this->client_ip . $user_agent;
 
         // Tier 2 ID: The Building (IP Only)

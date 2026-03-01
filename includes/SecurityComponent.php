@@ -57,6 +57,7 @@ abstract class SecurityComponent {
         if ( ! file_exists( $this->cache_dir ) ) {
             // SECURITY: 0700 (user-only access) prevents other users on shared hosting
             // from reading IP addresses or session flags
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- Using sys_get_temp_dir(), not WordPress uploads
             @mkdir( $this->cache_dir, 0700, true );
         }
     }
@@ -74,6 +75,7 @@ abstract class SecurityComponent {
         $file = $this->get_file_path( $context, $identifier );
         
         // Open or create file for reading and writing
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Required for flock() atomic operations
         $fp = @fopen( $file, 'c+' );
         if ( false === $fp ) {
             // Fallback: File creation failed, return 0
@@ -83,6 +85,7 @@ abstract class SecurityComponent {
         // CRITICAL: Acquire exclusive lock (blocks until lock is available)
         // This prevents race conditions between concurrent requests
         if ( ! flock( $fp, LOCK_EX ) ) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
             fclose( $fp );
             return 0;
         }
@@ -95,10 +98,13 @@ abstract class SecurityComponent {
             // Window expired - reset to 1
             ftruncate( $fp, 0 );
             rewind( $fp );
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Required for atomic flock() operations
             fwrite( $fp, '1' );
             fflush( $fp );
             flock( $fp, LOCK_UN );
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
             fclose( $fp );
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- Required to update mtime for window tracking
             @touch( $file ); // Update mtime
             return 1;
         }
@@ -114,14 +120,17 @@ abstract class SecurityComponent {
         // Write updated count (atomically)
         ftruncate( $fp, 0 );
         rewind( $fp );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Required for atomic flock() operations
         fwrite( $fp, (string) $count );
         fflush( $fp );
         
         // Release lock and close file
         flock( $fp, LOCK_UN );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
         fclose( $fp );
         
         // Update modification time
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- Required to update mtime for window tracking
         @touch( $file );
         
         return $count;
@@ -151,6 +160,7 @@ abstract class SecurityComponent {
         }
 
         // Open file for reading with shared lock
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Required for flock() atomic operations
         $fp = @fopen( $file, 'r' );
         if ( false === $fp ) {
             return 0;
@@ -158,6 +168,7 @@ abstract class SecurityComponent {
 
         // Acquire shared lock (multiple readers allowed)
         if ( ! flock( $fp, LOCK_SH ) ) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
             fclose( $fp );
             return 0;
         }
@@ -166,6 +177,7 @@ abstract class SecurityComponent {
         $count = empty( $content ) ? 0 : (int) $content;
         
         flock( $fp, LOCK_UN );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
         fclose( $fp );
         
         return $count;
@@ -183,12 +195,14 @@ abstract class SecurityComponent {
     protected function set_flag( $identifier, $context, $value = '1' ) {
         $file = $this->get_file_path( $context, $identifier );
         
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Required for flock() atomic operations
         $fp = @fopen( $file, 'c' );
         if ( false === $fp ) {
             return false;
         }
 
         if ( ! flock( $fp, LOCK_EX ) ) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
             fclose( $fp );
             return false;
         }
@@ -196,12 +210,15 @@ abstract class SecurityComponent {
         ftruncate( $fp, 0 );
         rewind( $fp );
         // SECURITY: JSON encode instead of serialize to prevent unserialize() RCE
-        fwrite( $fp, is_string( $value ) ? $value : json_encode( $value ) );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Required for atomic flock() operations
+        fwrite( $fp, is_string( $value ) ? $value : wp_json_encode( $value ) );
         fflush( $fp );
         
         flock( $fp, LOCK_UN );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
         fclose( $fp );
         
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch -- Required to update mtime for flag tracking
         @touch( $file );
         
         return true;
@@ -231,12 +248,14 @@ abstract class SecurityComponent {
             }
         }
 
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Required for flock() atomic operations
         $fp = @fopen( $file, 'r' );
         if ( false === $fp ) {
             return false;
         }
 
         if ( ! flock( $fp, LOCK_SH ) ) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
             fclose( $fp );
             return false;
         }
@@ -244,6 +263,7 @@ abstract class SecurityComponent {
         $content = stream_get_contents( $fp );
         
         flock( $fp, LOCK_UN );
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Part of flock() pattern
         fclose( $fp );
         
         return $content;
@@ -258,7 +278,7 @@ abstract class SecurityComponent {
      */
     protected function clear_file( $identifier, $context ) {
         $file = $this->get_file_path( $context, $identifier );
-        return @unlink( $file );
+        return wp_delete_file( $file );
     }
 
     /**
@@ -283,7 +303,7 @@ abstract class SecurityComponent {
      */
     protected function garbage_collector( $max_age = 3600 ) {
         // 1% chance to run cleanup
-        if ( rand( 1, 100 ) !== 1 ) {
+        if ( wp_rand( 1, 100 ) !== 1 ) {
             return;
         }
 
@@ -306,7 +326,7 @@ abstract class SecurityComponent {
             $mtime = @filemtime( $file );
             
             if ( false !== $mtime && ( $now - $mtime > $max_age ) ) {
-                @unlink( $file );
+                wp_delete_file( $file );
             }
         }
     }
@@ -331,7 +351,7 @@ abstract class SecurityComponent {
      */
     protected function get_client_ip() {
         // Default to REMOTE_ADDR (cannot be spoofed by client)
-        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
 
         // Only check proxy headers if explicitly configured
         if ( defined( 'SAURITY_BEHIND_PROXY' ) && SAURITY_BEHIND_PROXY ) {
@@ -344,7 +364,8 @@ abstract class SecurityComponent {
             foreach ( $headers as $header ) {
                 if ( ! empty( $_SERVER[ $header ] ) ) {
                     // Get first IP in list (actual client IP)
-                    $ip_list = explode( ',', $_SERVER[ $header ] );
+                    $header_value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+                    $ip_list = explode( ',', $header_value );
                     $ip = trim( $ip_list[0] );
                     break;
                 }
@@ -563,7 +584,7 @@ abstract class SecurityComponent {
                         </ul>
                     <?php endif; ?>
                     <?php if ( isset( $info['html'] ) ) : ?>
-                        <?php echo $info['html']; // Already escaped by caller ?>
+                        <?php echo wp_kses_post( $info['html'] ); ?>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>

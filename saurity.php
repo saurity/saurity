@@ -54,6 +54,17 @@ spl_autoload_register( function ( $class ) {
     }
 } );
 
+// Note: load_plugin_textdomain() is no longer needed since WordPress 4.6
+// when plugins are hosted on WordPress.org. WordPress automatically loads
+// translations from translate.wordpress.org. Keeping this hook for backward
+// compatibility with custom translation files in /languages folder, but
+// the function is empty to suppress the deprecation warning.
+function load_textdomain() {
+    // Intentionally empty - WordPress handles translations automatically since 4.6
+    // Custom translations can still be placed in /languages folder and WordPress
+    // will load them automatically.
+}
+
 // Initialize plugin
 function init() {
     // Load core components
@@ -62,7 +73,13 @@ function init() {
 }
 
 // Hook into WordPress
-add_action( 'plugins_loaded', __NAMESPACE__ . '\\init', 0 );
+// Note: Plugin must initialize at 'init' action (not plugins_loaded) because:
+// 1. WordPress authenticates users during 'init' (is_user_logged_in() needs this)
+// 2. Translations should be loaded at 'init' or later (WordPress 6.7+ requirement)
+// 3. The Firewall hooks to 'init' at priority 0, so we init at priority -1
+// This ensures CloudIntegration registers its filter BEFORE Firewall runs
+add_action( 'init', __NAMESPACE__ . '\\init', -1 );
+add_action( 'init', __NAMESPACE__ . '\\load_textdomain', 1 );
 
 // Activation hook
 register_activation_hook( __FILE__, function() {

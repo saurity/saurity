@@ -1,11 +1,16 @@
 <?php
 /**
- * Login Gateway - Protects wp-login.php and wp-admin
+ * Login Gateway
  *
  * @package Saurity
  */
 
 namespace Saurity;
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * LoginGateway class - intercepts and protects login attempts

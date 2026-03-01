@@ -1,11 +1,16 @@
 <?php
 /**
- * Email Notifications
+ * Email Notifier
  *
  * @package Saurity
  */
 
 namespace Saurity;
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * EmailNotifier class - sends email alerts for critical events

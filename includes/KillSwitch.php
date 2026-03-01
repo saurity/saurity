@@ -1,11 +1,16 @@
 <?php
 /**
- * Kill Switch - Emergency Disable
+ * Kill Switch
  *
  * @package Saurity
  */
 
 namespace Saurity;
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * KillSwitch class - disables all enforcement
@@ -72,6 +77,7 @@ class KillSwitch {
         }
 
         // Handle manual bypass termination
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Emergency bypass termination requires session match, not nonce
         if ( isset( $_GET['saurity_end_bypass'] ) ) {
             unset( $_SESSION['saurity_bypass_active'] );
             unset( $_SESSION['saurity_bypass_expires'] );
@@ -86,7 +92,7 @@ class KillSwitch {
         }
 
         // Check if active bypass session exists
-        if ( isset( $_SESSION['saurity_bypass_active'] ) && $_SESSION['saurity_bypass_expires'] > time() ) {
+        if ( isset( $_SESSION['saurity_bypass_active'] ) && isset( $_SESSION['saurity_bypass_expires'] ) && absint( $_SESSION['saurity_bypass_expires'] ) > time() ) {
             // Verify IP hasn't changed (security measure)
             if ( isset( $_SESSION['saurity_bypass_ip'] ) && $_SESSION['saurity_bypass_ip'] === $this->get_client_ip() ) {
                 // Show admin notice about active bypass
@@ -102,10 +108,12 @@ class KillSwitch {
         }
 
         // Check if new bypass URL was used
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Emergency bypass uses cryptographic key, not nonce
         if ( ! isset( $_GET['saurity_bypass'] ) ) {
             return false;
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Emergency bypass uses cryptographic key, not nonce
         $provided_key = sanitize_text_field( wp_unslash( $_GET['saurity_bypass'] ) );
         $stored_key = get_option( 'saurity_emergency_bypass_key', '' );
 
@@ -175,7 +183,7 @@ class KillSwitch {
         
         $remaining_seconds = 0;
         if ( isset( $_SESSION['saurity_bypass_expires'] ) ) {
-            $remaining_seconds = max( 0, $_SESSION['saurity_bypass_expires'] - time() );
+            $remaining_seconds = max( 0, absint( $_SESSION['saurity_bypass_expires'] ) - time() );
         }
         
         $remaining_minutes = ceil( $remaining_seconds / 60 );
@@ -233,7 +241,7 @@ class KillSwitch {
      */
     private function get_client_ip() {
         // Default to REMOTE_ADDR (cannot be spoofed by client)
-        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
 
         // Only check proxy headers if explicitly configured
         // This prevents IP spoofing attacks
@@ -247,7 +255,8 @@ class KillSwitch {
             foreach ( $headers as $header ) {
                 if ( ! empty( $_SERVER[ $header ] ) ) {
                     // Get first IP in list (actual client IP)
-                    $ip_list = explode( ',', $_SERVER[ $header ] );
+                    $header_value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+                    $ip_list = explode( ',', $header_value );
                     $ip = trim( $ip_list[0] );
                     break;
                 }
