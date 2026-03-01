@@ -1,404 +1,432 @@
-# Saurity Security v1.0.0
+<p align="center">
+  <img src="https://img.shields.io/badge/Saurity-Enterprise%20Security-0066CC?style=for-the-badge&logo=wordpress&logoColor=white" alt="Saurity">
+</p>
 
-**Enterprise-Grade WordPress Security Plugin - Zero False Positives, Built for Performance**
+<h1 align="center">Saurity Security</h1>
 
-![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-blue.svg)
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4.svg)
-![License](https://img.shields.io/badge/License-GPL%20v2-green.svg)
-![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)
+<p align="center">
+  <strong>Enterprise-Grade WordPress Security Plugin</strong><br>
+  <em>Zero False Positives • Cloud-Powered Protection • Built for Performance</em>
+</p>
 
-Protect your WordPress site from brute force attacks, spam floods, and malicious traffic with intelligent rate limiting, advanced firewall rules, and real-time threat detection. **Zero false positives. Production-ready. Shared hosting compatible.**
+<p align="center">
+  <img src="https://img.shields.io/badge/Version-1.1.0-brightgreen.svg?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/WordPress-6.0%2B-0073AA.svg?style=flat-square&logo=wordpress" alt="WordPress">
+  <img src="https://img.shields.io/badge/PHP-8.0%2B-777BB4.svg?style=flat-square&logo=php" alt="PHP">
+  <img src="https://img.shields.io/badge/License-GPL%20v2-green.svg?style=flat-square" alt="License">
+</p>
 
----
-
-## 🚀 Why Saurity?
-
-### The Problem with WordPress Security
-- **Other plugins lock out admins** during attacks
-- **Too many false positives** block legitimate users
-- **Performance impact** slows down your site
-- **Complex configuration** confuses users
-- **No emergency recovery** when things go wrong
-
-### The Saurity Solution
-✅ **Never locks out admins** - Intelligent detection + emergency recovery  
-✅ **Zero false positives** - Honeypot + timing checks catch only real bots  
-✅ **Lightning fast** - Optimized for shared hosting, minimal overhead  
-✅ **Simple configuration** - Smart defaults, works out of the box  
-✅ **3-tier recovery system** - Kill switch, bypass URL, manual disable  
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#cloud-integration">Cloud Integration</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#contributing">Contributing</a>
+</p>
 
 ---
 
-## ✨ Key Features
+## Overview
 
-### 🔒 Smart Rate Limiting
-- **Login Protection**: Exponential delays after failed attempts
-- **POST Flood Protection**: Two-tier system (device + IP) for NAT/office safety
-- **XML-RPC Protection**: Stops pingback and trackback abuse
-- **Comment Rate Limiting**: Prevents spam floods without CAPTCHA
-- **General Request Throttling**: DoS protection for the entire site
+**Saurity** is a comprehensive WordPress security solution that combines intelligent local protection with powerful cloud-based threat intelligence. Protect your site from brute force attacks, spam floods, malicious traffic, and sophisticated threats—all while maintaining zero false positives and exceptional performance.
 
-### 🛡️ Advanced Firewall
-- **SQL Injection Detection**: Pattern-based SQLi blocking
-- **XSS Protection**: Blocks cross-site scripting attempts
-- **Malicious User Agent Blocking**: Stops known bad bots
-- **Sensitive Path Protection**: Blocks `.env`, `.git`, `wp-config.php` access
-- **HTTP Method Filtering**: Prevents PUT/DELETE abuse
+### Why Choose Saurity?
 
-### 🎯 IP Management
-- **Allowlist**: Trusted IPs bypass all security checks
-- **Blocklist**: Permanently block malicious IPs
-- **CIDR Support**: Block entire IP ranges (e.g., 192.168.1.0/24)
-- **Import/Export**: CSV bulk operations for large lists
-- **Metadata Tracking**: Notes, reasons, and timestamps
-
-### 🚀 Advanced Security Features
-- **Tarpitting**: Delays blocks to waste attacker resources (10k → 20 attempts/min)
-- **Subnet Blocking**: Defeats botnets that rotate IPs within ranges
-- **Honeypot Detection**: Hidden fields catch form-filling bots (100% accuracy)
-- **Timing Analysis**: Detects instant form submissions (humans need 2+ seconds)
-
-### 📊 Activity Monitoring
-- **Real-Time Logging**: All security events with timestamps
-- **Searchable Logs**: Find specific IPs, users, or events instantly
-- **Filtered Views**: Info, Warning, Error, Critical categories
-- **CSV Export**: Download logs for analysis or compliance
-- **Auto-Cleanup**: Configurable retention (1-365 days)
-
-### 🆘 Emergency Recovery
-1. **Kill Switch**: One-click disable all protection (admin panel)
-2. **Emergency Bypass URL**: Secret URL for 10-minute admin access
-3. **Manual Disable**: File system access instructions (last resort)
+| Problem | Saurity Solution |
+|---------|------------------|
+| Other plugins lock out admins | Never locks out admins - 3-tier recovery system |
+| Too many false positives | Zero false positives - Honeypot + timing detection |
+| Performance impact | Lightning fast - < 0.5ms overhead per request |
+| Complex configuration | Smart defaults - Works out of the box |
+| No emergency recovery | Kill switch, bypass URL, manual disable |
+| Limited threat intelligence | Cloud-powered with Cloudflare, GeoIP & threat feeds |
 
 ---
 
-## 📦 Installation
+## Features
 
-### Via WordPress Admin (Recommended)
-1. Download `saurity.zip` from [GitHub Releases](https://github.com/saurity/saurity/releases)
-2. Go to **Plugins → Add New → Upload Plugin**
-3. Upload the ZIP file and click **Install Now**
-4. Click **Activate**
-5. Navigate to **Saurity** in the admin menu
-6. **Save your Emergency Bypass URL** immediately!
+### Core Security
 
-### Via FTP/File Manager
-1. Download and extract `saurity.zip`
-2. Upload the `saurity` folder to `/wp-content/plugins/`
-3. Activate via **Plugins** page in WordPress admin
-4. Configure settings at **Saurity** menu
+<table>
+<tr>
+<td width="50%">
+
+#### Rate Limiting
+- **Login Protection** - Exponential delays after failed attempts
+- **POST Flood Protection** - Two-tier system for NAT safety
+- **XML-RPC Protection** - Stops pingback abuse
+- **Comment Rate Limiting** - Spam prevention without CAPTCHA
+- **Request Throttling** - DoS protection
+
+</td>
+<td width="50%">
+
+#### Firewall Protection
+- **SQL Injection Detection** - Pattern-based blocking
+- **XSS Protection** - Cross-site scripting prevention
+- **Malicious User Agent Blocking** - Known bad bot filtering
+- **Sensitive Path Protection** - `.env`, `.git`, `wp-config.php`
+- **HTTP Method Filtering** - PUT/DELETE abuse prevention
+
+</td>
+</tr>
+</table>
+
+### Cloud Integration (New in v1.1.0)
+
+<table>
+<tr>
+<td width="33%">
+
+#### Cloudflare Integration
+- Automatic IP blocklist sync
+- DDoS protection coordination
+- Security level management
+- Challenge page customization
+- Rate limiting rules sync
+
+</td>
+<td width="33%">
+
+#### GeoIP Services
+- Country-based blocking/allowing
+- Geographic threat analysis
+- Regional access policies
+- Multiple provider support
+- Automatic database updates
+
+</td>
+<td width="33%">
+
+#### Threat Intelligence
+- Real-time threat feeds
+- Known malicious IP detection
+- Reputation scoring
+- Automatic blocklist updates
+- Multi-source aggregation
+
+</td>
+</tr>
+</table>
+
+### Advanced Security
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| **Tarpitting** | Delays responses to waste attacker resources (10k → 20 attempts/min) | ON |
+| **Subnet Blocking** | Defeats botnets rotating IPs within ranges | OFF |
+| **Honeypot Detection** | Hidden fields catch form-filling bots (100% accuracy) | ON |
+| **Timing Analysis** | Detects instant submissions (humans need 2+ sec) | ON |
+| **Privacy Policy** | GDPR-compliant data handling and consent management | ON |
+
+### Monitoring & Reporting
+
+- **Real-Time Activity Logs** - All security events with timestamps
+- **Interactive Dashboard** - Charts, metrics, and threat visualization
+- **Security Reports** - PDF/CSV export for compliance
+- **Email Notifications** - Instant alerts for critical events
+- **Searchable Logs** - Filter by IP, event type, severity
+
+### Emergency Recovery
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Recovery Option 1: Kill Switch                             │
+│  └─ One-click disable all protection from admin panel       │
+├─────────────────────────────────────────────────────────────┤
+│  Recovery Option 2: Emergency Bypass URL                    │
+│  └─ Secret URL grants 10-minute admin access                │
+├─────────────────────────────────────────────────────────────┤
+│  Recovery Option 3: Manual Disable                          │
+│  └─ Rename plugin folder via FTP (last resort)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Installation
 
 ### Requirements
-- WordPress 6.0 or higher
-- PHP 8.0 or higher
-- MySQL 5.7+ / MariaDB 10.2+
-- Writable `wp-content/uploads/saurity/` directory (auto-created)
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| WordPress | 6.0+ | 6.4+ |
+| PHP | 8.0+ | 8.2+ |
+| MySQL | 5.7+ | 8.0+ |
+| MariaDB | 10.2+ | 10.6+ |
+
+### Quick Install
+
+#### Via WordPress Admin (Recommended)
+
+```bash
+1. Download saurity.zip from GitHub Releases
+2. Go to Plugins → Add New → Upload Plugin
+3. Upload ZIP file and click Install Now
+4. Click Activate
+5. Navigate to Saurity menu
+6. Save your Emergency Bypass URL immediately!
+```
+
+#### Via Composer
+
+```bash
+composer require saurity/saurity
+```
+
+#### Via WP-CLI
+
+```bash
+wp plugin install https://github.com/saurity/saurity/releases/download/v1.1.0/saurity.zip --activate
+```
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-### Quick Start (Smart Defaults)
-Saurity works out of the box with intelligent defaults. No configuration needed!
+### Quick Start
+
+Saurity works immediately with intelligent defaults. For most sites, no configuration needed!
 
 ### Recommended Settings
 
-#### For Most Sites
+<details>
+<summary><strong>Standard Sites</strong></summary>
+
 ```
-✅ Enable Rate Limiting: ON (Master Switch)
-✅ Enable Firewall: ON
-✅ Enable Logging: ON
-✅ Enable IP Management: ON
-✅ Email Notifications: ON
+Rate Limiting: ON
+Firewall: ON
+Logging: ON
+IP Management: ON
+Email Notifications: ON
 
-Login Rate Limiting:
-- Attempts: 5
-- Window: 600 seconds (10 minutes)
-- Hard Block: 20 attempts
-- Duration: 3600 seconds (1 hour)
-
-Advanced Security:
-✅ Tarpitting: ON (3 seconds)
-✅ Honeypot: ON
-✅ Timing Check: ON (2 seconds)
+Login Protection:
+├─ Attempts: 5
+├─ Window: 600 seconds
+├─ Hard Block: 20 attempts
+└─ Duration: 3600 seconds
 ```
 
-#### For High-Security Sites
-```
-Login Rate Limiting:
-- Attempts: 3 (stricter)
-- Hard Block: 15 attempts (lower threshold)
+</details>
 
-Advanced Security:
-✅ Subnet Blocking: ON (30 failures)
-✅ Request Throttling: ON if under attack
+<details>
+<summary><strong>High-Security Sites</strong></summary>
+
+```
+All Standard Settings PLUS:
+Subnet Blocking: ON
+Cloud Integration: ON
+Threat Intelligence: ON
+
+Login Protection:
+├─ Attempts: 3
+├─ Hard Block: 15 attempts
+└─ GeoIP Country Blocking: Enabled
+```
+
+</details>
+
+<details>
+<summary><strong>Cloud-Enhanced Protection</strong></summary>
+
+```
+Cloudflare Integration:
+├─ API Token: [Your Token]
+├─ Zone ID: [Your Zone]
+├─ Auto-sync Blocklist: ON
+└─ Challenge Bad IPs: ON
+
+Threat Intelligence:
+├─ AbuseIPDB: [API Key]
+├─ Update Interval: 6 hours
+└─ Auto-block Malicious: ON
+```
+
+</details>
+
+---
+
+## Cloud Integration
+
+### Cloudflare Setup
+
+1. Generate API Token at [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
+2. Required permissions: `Zone.Firewall Services`, `Zone.Zone Settings`
+3. Enter token in **Saurity → Cloud → Cloudflare**
+4. Enable sync options as needed
+
+### GeoIP Configuration
+
+| Provider | Free Tier | Setup |
+|----------|-----------|-------|
+| MaxMind GeoLite2 | Yes | Requires free account |
+| IP2Location LITE | Yes | Direct download |
+| DB-IP | Yes | API key required |
+
+### Threat Intelligence Feeds
+
+```
+Supported Sources:
+├─ AbuseIPDB (API key required)
+├─ Spamhaus DROP/EDROP (free)
+├─ Emerging Threats (free)
+├─ Custom feeds (URL-based)
+└─ Local blocklists (CSV import)
 ```
 
 ---
 
-## 🎯 Use Cases
-
-### Protect Against:
-✅ Brute force login attacks  
-✅ Credential stuffing  
-✅ XML-RPC DDoS  
-✅ Comment spam floods  
-✅ POST request abuse  
-✅ SQL injection attempts  
-✅ XSS attacks  
-✅ Bot traffic  
-✅ Malicious scrapers  
-✅ DoS attacks  
-
-### Perfect For:
-✅ E-commerce sites (WooCommerce)  
-✅ Membership sites  
-✅ Corporate websites  
-✅ Blogs with comments  
-✅ Multi-author sites  
-✅ Shared hosting environments  
-✅ High-traffic sites  
-
----
-
-## 📊 Performance
+## Performance
 
 ### Benchmarks
-- **Overhead**: < 0.5ms per request
-- **Memory**: < 2MB RAM usage
-- **Database**: 1 query per security event (batched)
-- **Disk**: ~1MB per 15 days of logs
-- **Compatibility**: Works with all caching plugins
+
+| Metric | Saurity | Wordfence | Sucuri |
+|--------|---------|-----------|--------|
+| Request Overhead | < 0.5ms | ~2ms | ~3ms |
+| Memory Usage | < 2MB | ~8MB | ~6MB |
+| Database Queries | 1/event | 3-5/event | 2-3/event |
+| Cloud Dependency | Optional | Required | Required |
 
 ### Optimizations
+
 - File-based counters (no database writes for rate limiting)
-- Transient caching for dashboard data (5 minutes)
+- Transient caching for dashboard data
 - Lazy loading of components
-- Efficient SQL queries with indexes
+- Efficient SQL with proper indexes
 - Automatic log cleanup
+- Compatible with all caching plugins
 
 ---
 
-## 🔧 Advanced Features
+## Architecture
 
-### Two-Tier Rate Limiting
-Prevents false positives in shared IP environments (offices, schools):
-- **Tier 1**: Limits per device (IP + User Agent)
-- **Tier 2**: Higher limits per IP (allows multiple devices)
-
-### Tarpitting (Attack Economics)
-Makes attacks 500x slower and more expensive:
-- Without: 10,000 attempts/minute
-- With 3s delay: 20 attempts/minute
-- Wastes attacker resources without impacting legitimate users
-
-### Subnet Blocking (Anti-Botnet)
-Defeats botnets that rotate IPs:
-- Tracks failures by /24 subnet (256 IPs)
-- Blocks entire range when threshold exceeded
-- Example: 30 failures from 192.168.1.x → block 192.168.1.0/24
-
-### Zero False-Positive Bot Detection
-- **Honeypot**: Hidden field invisible to humans, bots auto-fill it
-- **Timing Check**: Humans need 2+ seconds, bots submit instantly
-- **100% accuracy**: Never blocks a real person
-
----
-
-## 📖 Documentation
-
-### All Features Are Optional
-Each security feature can be enabled/disabled independently:
-- Rate Limiting (Master Switch)
-- Firewall Protection
-- Activity Logging
-- IP Management
-- Email Notifications
-
-### Smart Defaults
-- **Enabled by default**: Essential security (rate limiting, firewall, honeypot)
-- **Disabled by default**: Aggressive features (subnet blocking, request throttling)
-- **High limits**: Prevent false positives (120 requests/minute for DoS protection)
-
-### Feature Matrix
-
-| Feature | Default | Use Case |
-|---------|---------|----------|
-| Login Rate Limiting | ✅ ON | Brute force protection |
-| POST Flood Protection | ✅ ON | Form spam prevention |
-| XML-RPC Protection | ✅ ON | Pingback DDoS prevention |
-| Comment Rate Limiting | ✅ ON | Comment spam blocking |
-| Firewall | ✅ ON | SQLi, XSS protection |
-| Tarpitting | ✅ ON | Slow down attacks |
-| Honeypot | ✅ ON | Bot detection |
-| Timing Check | ✅ ON | Bot detection |
-| Request Throttling | ❌ OFF | Only if under DoS attack |
-| Subnet Blocking | ❌ OFF | Only for botnet attacks |
-
----
-
-## 🆘 Troubleshooting
-
-### I'm Locked Out!
-1. **Use Emergency Bypass URL** (saved in settings)
-2. Navigate to Saurity and click "Activate Kill Switch"
-3. Or rename plugin folder via FTP: `saurity` → `saurity-disabled`
-
-### Email Notifications Not Working?
-WordPress can't send emails reliably on many hosts:
-1. Install **WP Mail SMTP** or **Easy WP SMTP** plugin
-2. Configure with Gmail/SendGrid/your email provider
-3. Test again - should work reliably now
-
-### False Positives (Legitimate Users Blocked)?
-1. Check if Request Throttling is enabled (should be OFF for most sites)
-2. Increase rate limit attempts (try 8-10 instead of 5)
-3. Increase hard block threshold (try 30 instead of 20)
-4. Add their IP to allowlist (IP Management tab)
-
-### Performance Issues?
-1. Check log retention (reduce to 7-15 days)
-2. Disable logging if not needed (keeps rate limiting active)
-3. Enable object caching (Redis/Memcached)
-
----
-
-## 🔐 Security Best Practices
-
-### After Installation
-1. ✅ Save Emergency Bypass URL in password manager
-2. ✅ Configure email notifications with SMTP plugin
-3. ✅ Add your IP to allowlist if on static IP
-4. ✅ Test recovery options (kill switch, bypass URL)
-5. ✅ Review logs weekly for suspicious activity
-
-### For Production Sites
-1. ✅ Enable all default features
-2. ✅ Set up email alerts
-3. ✅ Export logs monthly for compliance
-4. ✅ Enable subnet blocking if experiencing botnets
-5. ✅ Keep plugin updated
-
-### For High-Risk Sites
-1. ✅ Lower rate limit attempts (3-5)
-2. ✅ Enable subnet blocking
-3. ✅ Enable request throttling during attacks
-4. ✅ Export blocklist regularly
-5. ✅ Monitor logs daily
-
----
-
-## 🏗️ Architecture & Design
-
-### Component Structure
 ```
-Plugin.php (Orchestrator)
-├── ActivityLogger (Database)
-├── KillSwitch (Options)
-├── RateLimiter (File-based)
-├── LoginGateway (Hooks)
-├── Firewall (Early Check)
-├── IPManager (IP Lists)
-├── EmailNotifier (Alerts)
-├── Admin (UI)
-└── DashboardWidget (Quick View)
+saurity/
+├── saurity.php              # Main plugin file
+├── includes/
+│   ├── Plugin.php           # Core orchestrator
+│   ├── Admin.php            # Admin interface
+│   ├── Firewall.php         # Request filtering
+│   ├── RateLimiter.php      # Rate limiting engine
+│   ├── IPManager.php        # IP allow/blocklist
+│   ├── LoginGateway.php     # Login protection
+│   ├── ActivityLogger.php   # Event logging
+│   ├── SecurityReports.php  # Report generation
+│   ├── EmailNotifier.php    # Alert system
+│   ├── KillSwitch.php       # Emergency disable
+│   ├── CloudIntegration.php # Cloud services manager
+│   ├── PrivacyPolicy.php    # GDPR compliance
+│   └── cloud/
+│       ├── CloudflareAPI.php      # Cloudflare integration
+│       ├── GeoIP.php              # Geographic IP services
+│       └── ThreatIntelligence.php # Threat feed aggregation
+├── assets/
+│   ├── admin-styles.css     # Admin UI styles
+│   └── chart.min.js         # Dashboard charts
+├── languages/               # Translations
+└── md/                      # Documentation
 ```
 
-### Security Philosophy
-1. **Fail open, never closed**: Errors disable protection, not block users
-2. **Defense in depth**: Multiple layers of protection
-3. **Zero trust**: All inputs validated, all outputs escaped
-4. **Performance first**: Optimized for high-traffic sites
-5. **Emergency recovery**: 3 ways to disable if needed
-
-### Code Quality
-- **PSR-12 coding standards**
-- **WordPress coding standards**
-- **Type hints and strict types**
-- **Comprehensive inline documentation**
-- **Defensive error handling**
-
 ---
 
-## 📈 Comparison
+## Changelog
 
-### Saurity vs Other Security Plugins
+### Version 1.1.0 (2026-03-02)
 
-| Feature | Saurity | Wordfence | Sucuri | iThemes |
-|---------|---------|-----------|--------|---------|
-| Zero admin lockouts | ✅ | ❌ | ❌ | ❌ |
-| File-based rate limiting | ✅ | ❌ | ❌ | ❌ |
-| Two-tier POST protection | ✅ | ❌ | ❌ | ❌ |
-| Honeypot + Timing | ✅ | ❌ | ❌ | ❌ |
-| Emergency bypass URL | ✅ | ❌ | ❌ | ❌ |
-| Subnet blocking | ✅ | ✅ | ❌ | ❌ |
-| No cloud dependency | ✅ | ❌ | ❌ | ✅ |
-| Shared hosting friendly | ✅ | ⚠️ | ⚠️ | ✅ |
-| Performance overhead | < 0.5ms | ~2ms | ~3ms | ~1ms |
+#### New: Cloud Integration
+- **Cloudflare Integration** - API-based blocklist sync, DDoS coordination
+- **GeoIP Services** - Country-based blocking with multiple providers
+- **Threat Intelligence** - Real-time feeds from AbuseIPDB, Spamhaus, etc.
 
----
+#### New: Enhanced UI
+- Completely redesigned admin interface
+- Interactive dashboard with charts
+- Improved activity log viewer
+- Better mobile responsiveness
 
-## 🤝 Contributing
+#### New: Privacy & Compliance
+- GDPR-compliant data handling
+- Privacy policy generation
+- Data retention controls
+- Consent management
 
-Contributions are welcome! Please:
+#### New: Advanced Reporting
+- PDF security reports
+- Scheduled report generation
+- Executive summary dashboards
+- Trend analysis
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Follow WordPress and PSR-12 coding standards
-4. Test thoroughly (no admin lockouts!)
-5. Commit your changes (`git commit -m 'Add AmazingFeature'`)
-6. Push to the branch (`git push origin feature/AmazingFeature`)
-7. Open a Pull Request
-
----
-
-## 📝 Changelog
+#### Improvements
+- 3,084 lines of admin panel enhancements
+- 1,197 lines of UI improvements
+- Performance optimizations
+- Better error handling
 
 ### Version 1.0.0 (2026-01-08)
-**🎉 Initial Production Release**
 
-#### ✨ Core Features
+<details>
+<summary>View 1.0.0 Changelog</summary>
+
+#### Core Features
 - Smart rate limiting (login, POST, XML-RPC, comments)
 - Advanced firewall (SQLi, XSS, malicious patterns)
-- IP management (allowlist/blocklist with CIDR)
-- Real-time activity logging with search
-- Email notifications for critical events
-- Dashboard with security metrics
+- IP management with CIDR support
+- Real-time activity logging
+- Email notifications
 
-#### 🚀 Advanced Security
-- Tarpitting (attack slowdown)
-- Subnet blocking (anti-botnet)
-- Honeypot detection (zero false positives)
-- Timing analysis (bot detection)
-- General request throttling (DoS protection)
+#### Advanced Security
+- Tarpitting
+- Subnet blocking
+- Honeypot detection
+- Timing analysis
 
-#### 🆘 Recovery System
-- Kill switch (one-click disable)
-- Emergency bypass URL (10-minute access)
-- Manual disable instructions
-- Auto-disable on admin lockout detection
+#### Recovery System
+- Kill switch
+- Emergency bypass URL
+- Manual disable
 
-#### 🎨 User Interface
-- Beautiful tabbed admin interface
-- Real-time security metrics dashboard
-- Searchable, filterable activity logs
-- CSV export for logs and IP lists
-- Inline help tooltips for all settings
-
-#### ⚡ Performance
-- File-based rate limiting (no DB writes)
-- Cached dashboard data (5 minutes)
-- Efficient SQL with proper indexes
-- Auto-cleanup of old logs
-- Shared hosting optimized
+</details>
 
 ---
 
-## 📄 License
+## Contributing
 
-This plugin is licensed under the GNU General Public License v2 or later.
+We welcome contributions! Please follow these steps:
+
+```bash
+# 1. Fork the repository
+git fork https://github.com/saurity/saurity
+
+# 2. Create feature branch
+git checkout -b feature/amazing-feature
+
+# 3. Make your changes
+# Follow WordPress and PSR-12 coding standards
+
+# 4. Commit changes
+git commit -m "Add amazing feature"
+
+# 5. Push to branch
+git push origin feature/amazing-feature
+
+# 6. Open Pull Request
+```
+
+### Development Guidelines
+
+- Follow [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/)
+- Follow [PSR-12](https://www.php-fig.org/psr/psr-12/)
+- Write unit tests for new features
+- Update documentation
+- Never introduce admin lockout risks
+
+---
+
+## License
 
 ```
+Saurity Security Plugin
 Copyright (C) 2026 Saurav Kumar
 
 This program is free software; you can redistribute it and/or modify
@@ -414,43 +442,38 @@ GNU General Public License for more details.
 
 ---
 
-## 👤 Author
+## Author & Support
 
-**Saurav Kumar**
-- GitHub: [@saurity](https://github.com/saurity)
-- Plugin URI: https://github.com/saurity/saurity
-- Support: [GitHub Issues](https://github.com/saurity/saurity/issues)
+**Saurav Kumar** - [@saurity](https://github.com/saurity)
 
----
+### Get Help
 
-## 🌟 Support the Project
-
-If Saurity helps secure your WordPress site, please:
-- ⭐ Star the repository on GitHub
-- 🐛 Report bugs via [GitHub Issues](https://github.com/saurity/saurity/issues)
-- 💡 Suggest features or improvements
-- 📢 Share with other WordPress users
-- ✍️ Write a review on WordPress.org (coming soon)
+| Channel | Link |
+|---------|------|
+| Documentation | [docs/](./md/) |
+| Bug Reports | [GitHub Issues](https://github.com/saurity/saurity/issues) |
+| Feature Requests | [GitHub Issues](https://github.com/saurity/saurity/issues) |
+| Discussions | [GitHub Discussions](https://github.com/saurity/saurity/discussions) |
 
 ---
 
-## 🔗 Useful Links
+## Support the Project
 
 - [GitHub Repository](https://github.com/saurity/saurity)
 - [Report a Bug](https://github.com/saurity/saurity/issues)
 - [Request a Feature](https://github.com/saurity/saurity/issues)
 - [View Changelog](https://www.saurity.com/changelog)
 
----
-
-## 🎯 SEO Keywords
-
-WordPress security plugin, brute force protection, login protection, rate limiting, firewall, IP blocking, spam prevention, DDoS protection, XML-RPC protection, comment spam, WordPress hardening, security monitoring, activity logging, WordPress security best practices, zero false positives, shared hosting security, lightweight security plugin, WordPress security 2026
-
----
-
-**Remember:** Saurity is built on the principle that **security should protect users, not frustrate them**. Install it, configure it, and let it work silently in the background while you focus on your content.
+- **Star** this repository
+- **Report** bugs and issues
+- **Suggest** new features
+- **Share** with other WordPress users
+- **Contribute** code or documentation
 
 ---
+
+<p align="center">
+  <strong>Security should protect users, not frustrate them.</strong><br>
+</p>
 
 *Made for the WordPress community*
