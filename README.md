@@ -459,7 +459,10 @@ GNU General Public License for more details.
 
 ## Support the Project
 
-If Saurity helps secure your WordPress site:
+- [GitHub Repository](https://github.com/saurity/saurity)
+- [Report a Bug](https://github.com/saurity/saurity/issues)
+- [Request a Feature](https://github.com/saurity/saurity/issues)
+- [View Changelog](https://www.saurity.com/changelog)
 
 - **Star** this repository
 - **Report** bugs and issues
@@ -473,8 +476,4 @@ If Saurity helps secure your WordPress site:
   <strong>Security should protect users, not frustrate them.</strong><br>
 </p>
 
-<p align="center">
-  <a href="https://github.com/saurity/saurity/releases">
-    <img src="https://img.shields.io/badge/Download-v1.1.0-0066CC?style=for-the-badge" alt="Download">
-  </a>
-</p>
+*Made for the WordPress community*
