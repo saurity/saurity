@@ -1,11 +1,16 @@
 <?php
 /**
- * Warning Display System
+ * Warning Display
  *
  * @package Saurity
  */
 
 namespace Saurity;
+
+// Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 /**
  * WarningDisplay class - Shows security warnings before blocking
@@ -200,7 +205,7 @@ class WarningDisplay {
      * @return string
      */
     private function get_client_ip() {
-        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
 
         if ( defined( 'SAURITY_BEHIND_PROXY' ) && SAURITY_BEHIND_PROXY ) {
             $headers = [
@@ -211,7 +216,8 @@ class WarningDisplay {
 
             foreach ( $headers as $header ) {
                 if ( ! empty( $_SERVER[ $header ] ) ) {
-                    $ip_list = explode( ',', $_SERVER[ $header ] );
+                    $header_value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+                    $ip_list = explode( ',', $header_value );
                     $ip = trim( $ip_list[0] );
                     break;
                 }
