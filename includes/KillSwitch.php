@@ -71,6 +71,14 @@ class KillSwitch {
      * @return bool
      */
     private function check_emergency_bypass() {
+        // Skip session handling for REST API and loopback requests
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return false;
+        }
+        if ( wp_doing_cron() || wp_doing_ajax() ) {
+            return false;
+        }
+        
         // Start session if not already started
         if ( ! session_id() ) {
             @session_start();
@@ -84,6 +92,9 @@ class KillSwitch {
             unset( $_SESSION['saurity_bypass_ip'] );
             unset( $_SESSION['saurity_bypass_logged'] );
             
+            // Close session before logging
+            session_write_close();
+            
             // Log the manual termination
             $logger = new ActivityLogger();
             $logger->log( 'info', 'Emergency bypass session ended manually' );
@@ -95,6 +106,9 @@ class KillSwitch {
         if ( isset( $_SESSION['saurity_bypass_active'] ) && isset( $_SESSION['saurity_bypass_expires'] ) && absint( $_SESSION['saurity_bypass_expires'] ) > time() ) {
             // Verify IP hasn't changed (security measure)
             if ( isset( $_SESSION['saurity_bypass_ip'] ) && $_SESSION['saurity_bypass_ip'] === $this->get_client_ip() ) {
+                // Close session - we're done reading
+                session_write_close();
+                
                 // Show admin notice about active bypass
                 add_action( 'admin_notices', [ $this, 'show_bypass_notice' ] );
                 return true;
@@ -104,12 +118,14 @@ class KillSwitch {
             unset( $_SESSION['saurity_bypass_active'] );
             unset( $_SESSION['saurity_bypass_expires'] );
             unset( $_SESSION['saurity_bypass_ip'] );
+            session_write_close();
             return false;
         }
 
         // Check if new bypass URL was used
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Emergency bypass uses cryptographic key, not nonce
         if ( ! isset( $_GET['saurity_bypass'] ) ) {
+            session_write_close();
             return false;
         }
 
@@ -118,6 +134,7 @@ class KillSwitch {
         $stored_key = get_option( 'saurity_emergency_bypass_key', '' );
 
         if ( empty( $stored_key ) || empty( $provided_key ) ) {
+            session_write_close();
             return false;
         }
 
@@ -127,6 +144,9 @@ class KillSwitch {
             $_SESSION['saurity_bypass_active'] = true;
             $_SESSION['saurity_bypass_expires'] = time() + ( 10 * 60 ); // 10 minutes
             $_SESSION['saurity_bypass_ip'] = $this->get_client_ip();
+            
+            // Close session after writing
+            session_write_close();
             
             // Show admin notice
             add_action( 'admin_notices', [ $this, 'show_bypass_notice' ] );
@@ -138,6 +158,7 @@ class KillSwitch {
             return true;
         }
 
+        session_write_close();
         return false;
     }
 
@@ -151,9 +172,11 @@ class KillSwitch {
         }
         
         if ( isset( $_SESSION['saurity_bypass_logged'] ) ) {
+            session_write_close();
             return;
         }
         $_SESSION['saurity_bypass_logged'] = true;
+        session_write_close();
 
         $logger = new ActivityLogger();
         
@@ -185,6 +208,7 @@ class KillSwitch {
         if ( isset( $_SESSION['saurity_bypass_expires'] ) ) {
             $remaining_seconds = max( 0, absint( $_SESSION['saurity_bypass_expires'] ) - time() );
         }
+        session_write_close();
         
         $remaining_minutes = ceil( $remaining_seconds / 60 );
         
