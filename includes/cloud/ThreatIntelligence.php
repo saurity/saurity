@@ -385,6 +385,7 @@ class ThreatIntelligence {
     /**
      * Bulk add IPs to blocklist - OPTIMIZED
      * Uses direct database operations instead of individual API calls
+     * FIXED: Added proper error handling and incremental saves for large feeds
      *
      * @param array  $ips Array of IP addresses.
      * @param string $reason Block reason.
@@ -427,6 +428,8 @@ class ThreatIntelligence {
         // Process IPs in batches
         $batch = [];
         $current_time = current_time( 'mysql' );
+        $save_threshold = 500; // Save more frequently to prevent data loss
+        $items_since_last_save = 0;
         
         foreach ( $ips as $ip ) {
             // Skip if already in blocklist or allowlist
@@ -442,6 +445,7 @@ class ThreatIntelligence {
                 'added_by' => 'threat_feed',
             ];
             $added_count++;
+            $items_since_last_save++;
             
             // Mark as existing to prevent duplicates within batch
             $existing_ips[ $ip ] = true;
@@ -450,10 +454,31 @@ class ThreatIntelligence {
             if ( count( $batch ) >= $this->batch_size ) {
                 $current_blocklist = array_merge( $current_blocklist, $batch );
                 $batch = [];
+            }
+            
+            // Save incrementally to prevent data loss on large feeds
+            if ( $items_since_last_save >= $save_threshold ) {
+                // Merge any pending batch items before save
+                if ( ! empty( $batch ) ) {
+                    $current_blocklist = array_merge( $current_blocklist, $batch );
+                    $batch = [];
+                }
                 
-                // Save periodically to prevent memory buildup
-                if ( count( $current_blocklist ) % 1000 === 0 ) {
-                    update_option( 'saurity_ip_blocklist', $current_blocklist, false );
+                $save_result = update_option( 'saurity_ip_blocklist', $current_blocklist, false );
+                
+                if ( ! $save_result ) {
+                    // Log the issue but continue - the option might just be unchanged
+                    $this->logger->log( 
+                        'warning', 
+                        "Incremental blocklist save returned false at {$added_count} IPs (may be unchanged)"
+                    );
+                }
+                
+                $items_since_last_save = 0;
+                
+                // Allow garbage collection
+                if ( function_exists( 'gc_collect_cycles' ) ) {
+                    gc_collect_cycles();
                 }
             }
         }
@@ -463,8 +488,39 @@ class ThreatIntelligence {
             $current_blocklist = array_merge( $current_blocklist, $batch );
         }
 
-        // Final save (use autoload=false for large lists)
-        update_option( 'saurity_ip_blocklist', $current_blocklist, false );
+        // Final save with verification
+        $final_save_result = update_option( 'saurity_ip_blocklist', $current_blocklist, false );
+        
+        // Verify the save by reading back
+        $verification_list = get_option( 'saurity_ip_blocklist', [] );
+        $verification_count = is_array( $verification_list ) ? count( $verification_list ) : 0;
+        $expected_count = count( $current_blocklist );
+        
+        if ( $verification_count < $expected_count ) {
+            $this->logger->log( 
+                'error', 
+                "Blocklist save verification failed! Expected {$expected_count} entries, got {$verification_count}. " .
+                "This may be caused by database limits. Try increasing MySQL max_allowed_packet."
+            );
+            
+            // Try alternative storage method using WordPress transients for overflow
+            $overflow_count = $expected_count - $verification_count;
+            if ( $overflow_count > 0 && $verification_count > 0 ) {
+                $this->logger->log( 
+                    'warning', 
+                    "Attempting to store overflow IPs ({$overflow_count}) using transients"
+                );
+                
+                // Store overflow in transient (WordPress will auto-cleanup)
+                $overflow_ips = array_slice( $current_blocklist, $verification_count );
+                set_transient( 'saurity_blocklist_overflow', $overflow_ips, DAY_IN_SECONDS );
+            }
+        } else {
+            $this->logger->log( 
+                'debug', 
+                "Blocklist save verified: {$verification_count} entries stored successfully"
+            );
+        }
 
         return $added_count;
     }
