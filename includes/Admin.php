@@ -498,6 +498,9 @@ class Admin {
                 <a href="?page=saurity&tab=cloud-services" class="nav-tab <?php echo $current_tab === 'cloud-services' ? 'nav-tab-active' : ''; ?>">
                     Cloud Services
                 </a>
+                <a href="?page=saurity&tab=bug-report" class="nav-tab <?php echo $current_tab === 'bug-report' ? 'nav-tab-active' : ''; ?>">
+                    Bug Report
+                </a>
             </h2>
 
             <!-- Tab Content -->
@@ -518,6 +521,9 @@ class Admin {
                         break;
                     case 'cloud-services':
                         $this->render_cloud_services();
+                        break;
+                    case 'bug-report':
+                        $this->render_bug_report();
                         break;
                     case 'dashboard':
                     default:
@@ -1917,6 +1923,9 @@ class Admin {
                     <div class="saurity-ip-stat-label">Blocklisted</div>
                     <div class="saurity-ip-stat-sub">
                         <?php echo esc_html( $stats['blocklist_single'] ); ?> IPs, <?php echo esc_html( $stats['blocklist_cidr'] ); ?> CIDR
+                        <?php if ( ! empty( $stats['blocklist_overflow'] ) && $stats['blocklist_overflow'] > 0 ) : ?>
+                            <br><span style="color: #ff9800; font-size: 11px;">⚠️ +<?php echo esc_html( $stats['blocklist_overflow'] ); ?> in overflow storage</span>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -3620,5 +3629,13 @@ class Admin {
             </div>
         </form>
         <?php
+    }
+
+    /**
+     * Render bug report tab
+     */
+    private function render_bug_report() {
+        $bug_report = new BugReport();
+        $bug_report->render();
     }
 }

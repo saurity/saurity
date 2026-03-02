@@ -61,6 +61,7 @@ class IPManager {
 
     /**
      * Check if IP is in permanent blocklist (supports CIDR)
+     * ENHANCED: Also checks overflow transient for large threat feed imports
      *
      * @param string $ip IP address.
      * @return bool
@@ -84,6 +85,28 @@ class IPManager {
             // Check CIDR range
             if ( $this->ip_in_cidr( $ip, $entry_ip ) ) {
                 return true;
+            }
+        }
+        
+        // Also check overflow transient (for large threat feed imports)
+        $overflow = get_transient( 'saurity_blocklist_overflow' );
+        if ( ! empty( $overflow ) && is_array( $overflow ) ) {
+            foreach ( $overflow as $entry ) {
+                $entry_ip = $this->extract_ip_from_entry( $entry );
+                
+                if ( empty( $entry_ip ) ) {
+                    continue;
+                }
+                
+                // Check exact match
+                if ( $entry_ip === $ip ) {
+                    return true;
+                }
+                
+                // Check CIDR range
+                if ( $this->ip_in_cidr( $ip, $entry_ip ) ) {
+                    return true;
+                }
             }
         }
         
@@ -525,6 +548,7 @@ class IPManager {
     /**
      * Get statistics for IP lists
      * ENHANCED: Handles both string format and array format (from threat feeds)
+     * ENHANCED: Includes overflow transient IPs in statistics
      *
      * @return array
      */
@@ -533,6 +557,10 @@ class IPManager {
         $blocklist = $this->get_blocklist();
         $allowlist_meta = $this->get_allowlist_metadata();
         $blocklist_meta = $this->get_blocklist_metadata();
+        
+        // Get overflow IPs (from large threat feed imports)
+        $overflow = get_transient( 'saurity_blocklist_overflow' );
+        $overflow_count = ( ! empty( $overflow ) && is_array( $overflow ) ) ? count( $overflow ) : 0;
         
         // Count CIDR ranges vs single IPs
         $allowlist_cidr = 0;
@@ -557,6 +585,20 @@ class IPManager {
             }
         }
         
+        // Count overflow IPs (CIDR vs single)
+        $overflow_cidr = 0;
+        $overflow_single = 0;
+        if ( ! empty( $overflow ) && is_array( $overflow ) ) {
+            foreach ( $overflow as $entry ) {
+                $ip = $this->extract_ip_from_entry( $entry );
+                if ( ! empty( $ip ) && strpos( $ip, '/' ) !== false ) {
+                    $overflow_cidr++;
+                } else {
+                    $overflow_single++;
+                }
+            }
+        }
+        
         // Get recent additions (last 7 days)
         $week_ago = strtotime( '-7 days' );
         $recent_allowlist = 0;
@@ -578,9 +620,11 @@ class IPManager {
             'allowlist_total'   => count( $allowlist ),
             'allowlist_cidr'    => $allowlist_cidr,
             'allowlist_single'  => $allowlist_single,
-            'blocklist_total'   => count( $blocklist ),
-            'blocklist_cidr'    => $blocklist_cidr,
-            'blocklist_single'  => $blocklist_single,
+            'blocklist_total'   => count( $blocklist ) + $overflow_count,
+            'blocklist_stored'  => count( $blocklist ),
+            'blocklist_overflow' => $overflow_count,
+            'blocklist_cidr'    => $blocklist_cidr + $overflow_cidr,
+            'blocklist_single'  => $blocklist_single + $overflow_single,
             'recent_allowlist'  => $recent_allowlist,
             'recent_blocklist'  => $recent_blocklist,
         ];
