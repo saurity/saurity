@@ -4,7 +4,7 @@ Tags: security, firewall, brute force, rate limiting, login protection
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -136,7 +136,7 @@ Saurity logs IP addresses for legitimate security purposes (GDPR Article 6.1.f).
 
 == Changelog ==
 
-= 1.1.0 =
+= 1.1.1 =
 * Fixed: Large threat feed processing (Blocklist.de) now properly stores all IPs
 * Added: Incremental saves during threat feed updates
 * Added: Overflow storage for large blocklists exceeding database limits
@@ -155,7 +155,7 @@ Saurity logs IP addresses for legitimate security purposes (GDPR Article 6.1.f).
 
 == Upgrade Notice ==
 
-= 1.1.0 =
+= 1.1.1 =
 Fixed threat feed processing for large IP lists. Recommended update.
 
 = 1.0.0 =
