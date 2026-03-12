@@ -46,6 +46,42 @@ class DashboardWidget {
      */
     public function hook() {
         add_action( 'wp_dashboard_setup', [ $this, 'add_dashboard_widget' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_widget_styles' ] );
+    }
+
+    /**
+     * Enqueue dashboard widget styles
+     *
+     * @param string $hook Current admin page hook.
+     */
+    public function enqueue_widget_styles( $hook ) {
+        if ( 'index.php' !== $hook ) {
+            return;
+        }
+
+        $css = '
+            .saurity-widget { font-size: 13px; }
+            .saurity-status { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px;
+                border-radius: 4px; margin-bottom: 12px; font-size: 13px; }
+            .saurity-status.active { background: #d4edda; color: #155724; }
+            .saurity-status.inactive { background: #f8d7da; color: #721c24; }
+            .saurity-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+            .saurity-stat { text-align: center; padding: 8px; border-radius: 6px; background: #f0f0f1; }
+            .saurity-stat-value { display: block; font-size: 22px; font-weight: 700; color: #2196F3; }
+            .saurity-stat-label { display: block; font-size: 11px; color: #666; margin-top: 2px; }
+            .saurity-recent-log { padding: 6px 8px; border-left: 3px solid #ccc;
+                margin-bottom: 4px; background: #f9f9f9; font-size: 12px; }
+            .saurity-recent-log.info { border-left-color: #2196F3; }
+            .saurity-recent-log.warning { border-left-color: #ff9800; }
+            .saurity-recent-log.error { border-left-color: #f44336; }
+            .saurity-recent-log.critical { border-left-color: #9c27b0; }
+            .saurity-log-time { font-size: 11px; color: #999; margin-top: 2px; }
+            .saurity-widget-footer { margin-top: 12px; }
+        ';
+
+        wp_register_style( 'saurity-widget', false, [], SAURITY_VERSION );
+        wp_enqueue_style( 'saurity-widget' );
+        wp_add_inline_style( 'saurity-widget', $css );
     }
 
     /**
@@ -58,7 +94,7 @@ class DashboardWidget {
 
         wp_add_dashboard_widget(
             'saurity_security_widget',
-            '🛡️ Saurity Security Status',
+            '🛡️ Saurity Shield Status',
             [ $this, 'render_widget' ]
         );
     }
@@ -75,68 +111,6 @@ class DashboardWidget {
         $stats = $this->get_statistics();
 
         ?>
-        <style>
-            .saurity-widget { padding: 0; }
-            .saurity-status {
-                padding: 15px;
-                margin: -12px -12px 15px -12px;
-                border-radius: 4px 4px 0 0;
-            }
-            .saurity-status.active {
-                background: linear-gradient(135deg, #46b450 0%, #2ea44f 100%);
-                color: white;
-            }
-            .saurity-status.inactive {
-                background: linear-gradient(135deg, #dc3232 0%, #a00 100%);
-                color: white;
-            }
-            .saurity-stats {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-                margin-bottom: 15px;
-            }
-            .saurity-stat {
-                text-align: center;
-                padding: 12px;
-                background: #f9f9f9;
-                border-radius: 4px;
-                border: 1px solid #ddd;
-            }
-            .saurity-stat-value {
-                font-size: 24px;
-                font-weight: bold;
-                color: #2196F3;
-                display: block;
-            }
-            .saurity-stat-label {
-                font-size: 11px;
-                color: #666;
-                text-transform: uppercase;
-                margin-top: 5px;
-                display: block;
-            }
-            .saurity-recent-log {
-                padding: 8px;
-                margin-bottom: 8px;
-                background: #f9f9f9;
-                border-left: 3px solid #ccc;
-                font-size: 12px;
-            }
-            .saurity-recent-log.warning { border-left-color: #ff9800; }
-            .saurity-recent-log.error { border-left-color: #f44336; }
-            .saurity-recent-log.critical { border-left-color: #9c27b0; }
-            .saurity-log-time {
-                color: #666;
-                font-size: 11px;
-            }
-            .saurity-widget-footer {
-                text-align: center;
-                padding-top: 10px;
-                border-top: 1px solid #ddd;
-            }
-        </style>
-
         <div class="saurity-widget">
             <!-- Status Banner -->
             <div class="saurity-status <?php echo $kill_switch_active ? 'inactive' : 'active'; ?>">

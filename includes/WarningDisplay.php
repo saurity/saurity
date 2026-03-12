@@ -54,59 +54,6 @@ class WarningDisplay {
         $warning = $warnings[0];
         
         ?>
-        <style>
-            .saurity-warning-banner {
-                background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-                border-left: 5px solid #e65100;
-                padding: 20px;
-                margin: 20px 0;
-                border-radius: 8px;
-                color: white;
-                box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
-                animation: pulse 2s infinite;
-            }
-            @keyframes pulse {
-                0%, 100% { box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3); }
-                50% { box-shadow: 0 4px 25px rgba(255, 152, 0, 0.5); }
-            }
-            .saurity-warning-banner h3 {
-                color: white;
-                margin: 0 0 10px 0;
-                font-size: 20px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .saurity-warning-banner p {
-                margin: 8px 0;
-                line-height: 1.6;
-                font-size: 14px;
-            }
-            .saurity-warning-banner strong {
-                color: #fff3e0;
-                font-size: 16px;
-            }
-            .saurity-warning-progress {
-                background: rgba(255,255,255,0.2);
-                height: 8px;
-                border-radius: 4px;
-                margin: 15px 0 10px 0;
-                overflow: hidden;
-            }
-            .saurity-warning-progress-bar {
-                background: #fff;
-                height: 100%;
-                transition: width 0.3s;
-                border-radius: 4px;
-            }
-            .saurity-warning-stats {
-                background: rgba(255,255,255,0.1);
-                padding: 12px;
-                border-radius: 4px;
-                margin-top: 12px;
-                font-size: 13px;
-            }
-        </style>
         <div class="saurity-warning-banner">
             <h3>
                 <span style="font-size: 28px;">⚠️</span>
@@ -193,10 +140,38 @@ class WarningDisplay {
     }
 
     /**
-     * Display warnings (enqueue inline styles)
+     * Enqueue warning banner styles via login_enqueue_scripts
      */
     public function display_login_warnings() {
-        // Styles are included in display_login_warning_banner()
+        $css = '
+            .saurity-warning-banner {
+                background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+                border-left: 5px solid #e65100;
+                padding: 20px; margin: 20px 0; border-radius: 8px; color: white;
+                box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+                animation: saurity-pulse 2s infinite;
+            }
+            @keyframes saurity-pulse {
+                0%, 100% { box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3); }
+                50%       { box-shadow: 0 4px 25px rgba(255, 152, 0, 0.5); }
+            }
+            .saurity-warning-banner h3 {
+                color: white; margin: 0 0 10px 0; font-size: 20px;
+                display: flex; align-items: center; gap: 10px;
+            }
+            .saurity-warning-banner p { margin: 8px 0; line-height: 1.6; font-size: 14px; }
+            .saurity-warning-banner strong { color: #fff3e0; font-size: 16px; }
+            .saurity-warning-progress {
+                background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px;
+                margin: 15px 0 10px 0; overflow: hidden;
+            }
+            .saurity-warning-progress-bar { background: #fff; height: 100%; transition: width 0.3s; border-radius: 4px; }
+            .saurity-warning-stats {
+                background: rgba(255,255,255,0.1); padding: 12px; border-radius: 4px;
+                margin-top: 12px; font-size: 13px;
+            }
+        ';
+        wp_add_inline_style( 'login', $css );
     }
 
     /**

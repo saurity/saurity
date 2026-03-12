@@ -56,19 +56,63 @@ class LoginGateway {
     public function hook() {
         // Early check for blocked IPs
         add_action( 'init', [ $this, 'check_ip_blocklist' ], 1 );
-        
+
         // Check access before protected areas
         add_action( 'init', [ $this, 'check_access' ], 2 );
-        
+
+        // Enqueue login-page warning styles
+        add_action( 'login_enqueue_scripts', [ $this, 'enqueue_login_styles' ] );
+
         // Display warning on login page if approaching limit
         add_action( 'login_header', [ $this, 'display_login_warning' ] );
-        
+
         // Add honeypot and timing fields to login form
         add_action( 'login_form', [ $this, 'add_bot_detection_fields' ] );
-        
+
         // Monitor login attempts
         add_action( 'wp_login', [ $this, 'on_login_success' ], 10, 2 );
         add_action( 'wp_login_failed', [ $this, 'on_login_failure' ], 10, 2 );
+    }
+
+    /**
+     * Enqueue warning styles on the login page
+     */
+    public function enqueue_login_styles() {
+        $css = '
+            .saurity-login-warning {
+                padding: 15px;
+                margin: 0 0 20px 0;
+                border-radius: 4px;
+                border: 1px solid;
+                border-left-width: 4px;
+            }
+            .saurity-login-warning--hard {
+                background: #fff3cd;
+                border-color: #ffc107;
+                border-left-color: #ff5722;
+            }
+            .saurity-login-warning--hard strong { color: #721c24; font-size: 15px; }
+            .saurity-login-warning--hard p { margin: 8px 0 0 0; color: #721c24; font-size: 13px; line-height: 1.5; }
+            .saurity-login-warning--hard .saurity-remaining { background: #ff5722; }
+            .saurity-login-warning--soft {
+                background: #fff3e0;
+                border-color: #ff9800;
+                border-left-color: #ff9800;
+            }
+            .saurity-login-warning--soft strong { color: #856404; font-size: 15px; }
+            .saurity-login-warning--soft p { margin: 8px 0 0 0; color: #856404; font-size: 13px; line-height: 1.5; }
+            .saurity-login-warning--soft .saurity-remaining { background: #ff9800; }
+            .saurity-login-warning .warning-icon { font-size: 20px; margin-right: 10px; vertical-align: middle; }
+            .saurity-remaining {
+                display: inline-block;
+                color: white;
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+        ';
+        wp_add_inline_style( 'login', $css );
     }
     
     /**
@@ -118,41 +162,7 @@ class LoginGateway {
         if ( $hard_warning ) {
             // CRITICAL: Approaching hard block
             ?>
-            <style>
-                .saurity-login-warning {
-                    background: #fff3cd;
-                    border: 1px solid #ffc107;
-                    border-left: 4px solid #ff5722;
-                    padding: 15px;
-                    margin: 0 0 20px 0;
-                    border-radius: 4px;
-                }
-                .saurity-login-warning .warning-icon {
-                    font-size: 20px;
-                    margin-right: 10px;
-                    vertical-align: middle;
-                }
-                .saurity-login-warning strong {
-                    color: #721c24;
-                    font-size: 15px;
-                }
-                .saurity-login-warning p {
-                    margin: 8px 0 0 0;
-                    color: #721c24;
-                    font-size: 13px;
-                    line-height: 1.5;
-                }
-                .saurity-remaining {
-                    display: inline-block;
-                    background: #ff5722;
-                    color: white;
-                    padding: 3px 8px;
-                    border-radius: 3px;
-                    font-weight: bold;
-                    font-size: 14px;
-                }
-            </style>
-            <div class="saurity-login-warning">
+            <div class="saurity-login-warning saurity-login-warning--hard">
                 <span class="warning-icon">⚠️</span>
                 <strong>CRITICAL: Approaching Account Lock</strong>
                 <p>
@@ -169,41 +179,7 @@ class LoginGateway {
         } elseif ( $soft_warning ) {
             // WARNING: Approaching soft limit (rate limiting will start)
             ?>
-            <style>
-                .saurity-login-warning {
-                    background: #fff3e0;
-                    border: 1px solid #ff9800;
-                    border-left: 4px solid #ff9800;
-                    padding: 15px;
-                    margin: 0 0 20px 0;
-                    border-radius: 4px;
-                }
-                .saurity-login-warning .warning-icon {
-                    font-size: 20px;
-                    margin-right: 10px;
-                    vertical-align: middle;
-                }
-                .saurity-login-warning strong {
-                    color: #856404;
-                    font-size: 15px;
-                }
-                .saurity-login-warning p {
-                    margin: 8px 0 0 0;
-                    color: #856404;
-                    font-size: 13px;
-                    line-height: 1.5;
-                }
-                .saurity-remaining {
-                    display: inline-block;
-                    background: #ff9800;
-                    color: white;
-                    padding: 3px 8px;
-                    border-radius: 3px;
-                    font-weight: bold;
-                    font-size: 14px;
-                }
-            </style>
-            <div class="saurity-login-warning">
+            <div class="saurity-login-warning saurity-login-warning--soft">
                 <span class="warning-icon">⚠️</span>
                 <strong>Login Attempt Warning</strong>
                 <p>

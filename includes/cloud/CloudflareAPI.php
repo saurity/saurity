@@ -343,7 +343,7 @@ class CloudflareAPI {
                 'target' => 'ip',
                 'value' => $ip,
             ],
-            'notes' => ! empty( $notes ) ? $notes : 'Blocked by Saurity Security',
+            'notes' => ! empty( $notes ) ? $notes : 'Blocked by Saurity Shield',
         ];
 
         $response = $this->make_request( 'POST', $endpoint, $data );

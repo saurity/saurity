@@ -1,4 +1,4 @@
-=== Saurity Security ===
+=== Saurity Shield ===
 Contributors: sauravkumar
 Tags: security, firewall, brute force, rate limiting, login protection
 Requires at least: 6.0
@@ -8,18 +8,18 @@ Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Enterprise-grade WordPress security: Smart rate limiting, firewall, IP management, real-time threat detection. Zero false positives.
+Enterprise-grade WordPress security: Smart rate limiting, firewall, IP management, and real-time threat detection.
 
 == Description ==
 
 Saurity protects your WordPress site from brute force attacks, spam floods, and malicious traffic with intelligent rate limiting, advanced firewall rules, and real-time threat detection.
 
-**Zero false positives. Production-ready. Shared hosting compatible.**
+**Designed to minimize false positives. Production-ready. Shared hosting compatible.**
 
 = Why Saurity? =
 
-* **Never locks out admins** - Intelligent detection + emergency recovery
-* **Zero false positives** - Honeypot + timing checks catch only real bots
+* **Protects admin access** - Intelligent detection + 3-tier emergency recovery system
+* **Minimal false positives** - Honeypot + timing checks designed to target real bots
 * **Lightning fast** - Optimized for shared hosting, minimal overhead (<0.5ms)
 * **Simple configuration** - Smart defaults, works out of the box
 * **3-tier recovery system** - Kill switch, bypass URL, manual disable
@@ -50,7 +50,7 @@ Saurity protects your WordPress site from brute force attacks, spam floods, and 
 
 **Advanced Bot Detection**
 
-* Honeypot: Hidden fields catch form-filling bots (100% accuracy)
+* Honeypot: Hidden fields help detect form-filling bots
 * Timing Analysis: Detects instant form submissions
 * Tarpitting: Delays blocks to waste attacker resources
 
@@ -94,15 +94,17 @@ All external services are optional and documented. See the Privacy section below
 
 = Will this lock me out? =
 
-No. Saurity has a 3-tier recovery system:
+Saurity is designed with a 3-tier recovery system to help prevent lockouts:
 
 1. **Kill Switch** - One-click disable in admin panel
 2. **Bypass URL** - Secret URL for emergency access (save this!)
 3. **Manual** - Rename plugin folder via FTP
 
+As with any security plugin, testing recovery options in a staging environment before going live is recommended.
+
 = Does it slow down my site? =
 
-No. Saurity adds less than 0.5ms to page loads. It uses file-based counters instead of database queries for rate limiting.
+Saurity is designed for minimal overhead, typically adding less than 0.5ms to page loads. It uses file-based counters instead of database queries for rate limiting. Actual performance impact may vary depending on your server environment.
 
 = Does it track users? =
 
@@ -168,6 +170,93 @@ Fixed threat feed processing for large IP lists. Recommended update.
 
 = 1.0.0 =
 Initial release. After installation, save your Emergency Bypass URL!
+
+== External services ==
+
+This plugin can optionally connect to external services. **All external connections are opt-in and disabled by default.** No external connections are made by the core security features unless you explicitly enable them in Settings → Cloud Services.
+
+= Cloudflare API =
+
+**What it is:** Cloudflare's firewall management API, used to sync your WordPress IP blocklist with Cloudflare's edge firewall and import Cloudflare security events into the activity log.
+
+**What data is sent:** Your blocked IP addresses are pushed to Cloudflare's Access Rules. No visitor personal data (usernames, cookies, passwords) is ever sent.
+
+**When:** Only when you enable Cloudflare integration, enter your API token and Zone ID, and either trigger a manual sync or the scheduled hourly sync runs.
+
+**Service provider:** Cloudflare, Inc.
+**Terms of Service:** https://www.cloudflare.com/terms/
+**Privacy Policy:** https://www.cloudflare.com/privacypolicy/
+
+---
+
+= IP-API.com (GeoIP Lookup) =
+
+**What it is:** A free IP geolocation service used to determine the country of origin of visitor IP addresses.
+
+**What data is sent:** Each incoming visitor's IP address is sent to ip-api.com to retrieve the corresponding country code. No other data (usernames, cookies, page content) is sent.
+
+**When:** Only when GeoIP is enabled **and** the "IP-API.com" provider is selected. Each non-cached request sends the visitor's IP address. Results are cached per-IP to minimise calls.
+
+**Service provider:** ip-api.com
+**Terms of Service / Legal:** https://ip-api.com/docs/legal
+**Privacy Policy:** https://ip-api.com/docs/legal
+
+---
+
+= MaxMind GeoLite2 (GeoIP Database Download) =
+
+**What it is:** MaxMind's GeoLite2 country database, used locally to determine visitor country without sending requests for every page load.
+
+**What data is sent:** Your MaxMind license key is included in the download URL when fetching the database file. No visitor IP addresses are ever sent to MaxMind — all lookups are performed locally.
+
+**When:** Only when GeoIP is enabled with the "MaxMind" provider selected. The database file is downloaded once during setup and refreshed periodically.
+
+**Service provider:** MaxMind, Inc.
+**Terms of Use:** https://www.maxmind.com/en/terms_of_use
+**Privacy Policy:** https://www.maxmind.com/en/privacy-policy
+
+---
+
+= Emerging Threats (Threat Intelligence Feed) =
+
+**What it is:** A free, open-source threat intelligence feed listing known compromised and malicious IP addresses.
+
+**What data is sent:** Nothing. This is a download-only operation — the plugin fetches a plain-text IP list. No data from your site is transmitted.
+
+**When:** Only when Threat Intelligence Feeds are enabled and the "Emerging Threats" feed is selected. Updated on your configured schedule (default: daily).
+
+**Service provider:** Emerging Threats / Proofpoint, Inc.
+**Usage terms:** https://rules.emergingthreats.net/OPEN_usage.txt
+**Privacy Policy:** https://www.proofpoint.com/us/privacy-policy
+
+---
+
+= Spamhaus DROP (Threat Intelligence Feed) =
+
+**What it is:** The Spamhaus "Don't Route Or Peer" blocklist — a list of hijacked netblocks and cybercriminal networks.
+
+**What data is sent:** Nothing. This is a download-only operation.
+
+**When:** Only when Threat Intelligence Feeds are enabled and the "Spamhaus DROP" feed is selected. Updated on your configured schedule.
+
+**Service provider:** The Spamhaus Project Ltd.
+**Terms of Use:** https://www.spamhaus.org/organization/dnsblusage/
+**Privacy Policy:** https://www.spamhaus.org/privacy-policy/
+
+---
+
+= Blocklist.de (Threat Intelligence Feed) =
+
+**What it is:** A community-maintained IP blocklist of servers reported for SSH brute-force, mail abuse, and web attack activity.
+
+**What data is sent:** Nothing. This is a download-only operation.
+
+**When:** Only when Threat Intelligence Feeds are enabled and the "Blocklist.de" feed is selected. Updated on your configured schedule.
+
+**Service provider:** blocklist.de
+**Info / Terms:** https://www.blocklist.de/en/info.html
+
+---
 
 == Privacy ==
 

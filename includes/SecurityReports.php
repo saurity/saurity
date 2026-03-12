@@ -66,7 +66,7 @@ class SecurityReports {
         if ( ! isset( $schedules['weekly'] ) ) {
             $schedules['weekly'] = [
                 'interval' => 604800, // 7 days in seconds
-                'display'  => __( 'Once Weekly', 'saurity' ),
+                'display'  => __( 'Once Weekly', 'saurity-shield' ),
             ];
         }
         return $schedules;

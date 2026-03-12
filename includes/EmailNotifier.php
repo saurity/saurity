@@ -98,7 +98,7 @@ class EmailNotifier {
 
         $headers = [
             'Content-Type: text/html; charset=UTF-8',
-            'From: Saurity Security <' . $admin_email . '>',
+            'From: Saurity Shield <' . $admin_email . '>',
         ];
 
         wp_mail( $this->get_notification_email(), $subject, $message, $headers );
@@ -243,7 +243,7 @@ class EmailNotifier {
 <body>
     <div class="container">
         <div class="header">
-            <h1>Saurity Security Alert</h1>
+            <h1>Saurity Shield Alert</h1>
             <p>' . esc_html( $site_name ) . '</p>
         </div>
         <div class="content">
@@ -301,7 +301,7 @@ class EmailNotifier {
             </div>
         </div>
         <div class="footer">
-            <p><strong>Saurity Security Plugin</strong></p>
+            <p><strong>Saurity Shield Plugin</strong></p>
             <p>' . esc_html( $site_name ) . '</p>
             <p><a href="' . esc_url( $site_url ) . '">' . esc_html( $site_url ) . '</a></p>
         </div>
@@ -493,7 +493,7 @@ class EmailNotifier {
             <div class="success-badge">Email Configuration Successful</div>
             
             <p style="font-size: 16px; margin: 20px 0;">
-                This is a test email from the Saurity Security plugin. If you\'re reading this, your email notifications are working correctly!
+                This is a test email from the Saurity Shield plugin. If you\'re reading this, your email notifications are working correctly!
             </p>
             
             <div class="info-row">
@@ -521,7 +521,7 @@ class EmailNotifier {
             </div>
         </div>
         <div class="footer">
-            <p><strong>Saurity Security Plugin</strong></p>
+            <p><strong>Saurity Shield Plugin</strong></p>
             <p>' . esc_html( $site_name ) . '</p>
             <p><a href="' . esc_url( $site_url ) . '">' . esc_html( $site_url ) . '</a></p>
         </div>
@@ -531,7 +531,7 @@ class EmailNotifier {
 
         $headers = [
             'Content-Type: text/html; charset=UTF-8',
-            'From: Saurity Security <' . $admin_email . '>',
+            'From: Saurity Shield <' . $admin_email . '>',
         ];
 
         $result = wp_mail( $notification_email, $subject, $message, $headers );
