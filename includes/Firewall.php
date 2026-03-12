@@ -166,7 +166,7 @@ class Firewall extends SecurityComponent {
             // but skip country blocking to prevent lockout
         }
 
-        // Priority 5: Check Honeypot (100% bot detection, zero false positives)
+        // Priority 5: Check Honeypot (bot detection via hidden field)
         // Skip for logged-in users (checked inside method)
         if ( $this->check_honeypot() ) {
             $this->block( 'Bot detected (honeypot field filled)' );
@@ -358,7 +358,7 @@ class Firewall extends SecurityComponent {
             return false;
         }
         
-        // Check if honeypot field is filled (100% bot detection)
+        // Check if honeypot field is filled (bots typically fill all visible and hidden fields)
         // Field name: website_url_check (sounds legitimate to bots)
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bot detection check, not form processing
         if ( ! empty( $_POST['website_url_check'] ) ) {

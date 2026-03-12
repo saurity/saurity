@@ -85,7 +85,7 @@ class Admin {
      */
     public function add_menu() {
         add_menu_page(
-            'Saurity Security',
+            'Saurity Shield',
             'Saurity',
             'manage_options',
             'saurity',
@@ -102,21 +102,25 @@ class Admin {
         // Feature toggles - simple boolean handling
         register_setting( 'saurity_settings', 'saurity_enable_rate_limiting', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
         register_setting( 'saurity_settings', 'saurity_enable_firewall', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
         register_setting( 'saurity_settings', 'saurity_enable_logging', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
         register_setting( 'saurity_settings', 'saurity_enable_ip_management', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
@@ -168,6 +172,7 @@ class Admin {
         // POST Flood Settings
         register_setting( 'saurity_settings', 'saurity_enable_post_flood', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
@@ -201,6 +206,7 @@ class Admin {
         // XML-RPC Settings
         register_setting( 'saurity_settings', 'saurity_enable_xmlrpc_protection', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
@@ -225,6 +231,7 @@ class Admin {
         // Comment Rate Limiting Settings
         register_setting( 'saurity_settings', 'saurity_enable_comment_rate_limiting', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
@@ -249,6 +256,7 @@ class Admin {
         // General Request Throttling (DoS Protection)
         register_setting( 'saurity_settings', 'saurity_enable_request_throttle', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => false, // Disabled by default
         ] );
         
@@ -273,6 +281,7 @@ class Admin {
         // Advanced Security Features
         register_setting( 'saurity_settings', 'saurity_enable_subnet_blocking', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => false,
         ] );
         
@@ -287,6 +296,7 @@ class Admin {
         
         register_setting( 'saurity_settings', 'saurity_enable_tarpitting', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true, // Enabled by default for better security
         ] );
         
@@ -301,11 +311,13 @@ class Admin {
         
         register_setting( 'saurity_settings', 'saurity_enable_honeypot', [
             'type' => 'boolean',
-            'default' => true, // Enabled by default - zero false positives
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => true, // Enabled by default
         ] );
         
         register_setting( 'saurity_settings', 'saurity_enable_timing_check', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true, // Enabled by default
         ] );
         
@@ -320,6 +332,7 @@ class Admin {
         
         register_setting( 'saurity_settings', 'saurity_email_notifications', [
             'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => true,
         ] );
         
@@ -463,7 +476,7 @@ class Admin {
 
         ?>
         <div class="wrap">
-            <h1>Saurity Security v<?php echo esc_html( SAURITY_VERSION ); ?></h1>
+            <h1>Saurity Shield v<?php echo esc_html( SAURITY_VERSION ); ?></h1>
 
             <?php if ( $kill_switch_active ) : ?>
                 <div class="notice notice-warning" style="padding: 15px; display: flex; align-items: center; gap: 15px; border-left: 4px solid #ff9800;">
@@ -1009,7 +1022,7 @@ class Admin {
                     <div class="saurity-setting-row">
                         <div class="saurity-setting-info">
                             <div class="saurity-setting-name">🍯 Honeypot Detection</div>
-                            <div class="saurity-setting-desc">Hidden field that catches bots (zero false positives)</div>
+                            <div class="saurity-setting-desc">Hidden field designed to detect form-filling bots</div>
                         </div>
                         <div class="saurity-setting-control">
                             <label class="saurity-toggle">
@@ -1207,13 +1220,6 @@ class Admin {
                 <span style="margin-left: 15px; color: #666;">All changes are saved when you click this button.</span>
             </div>
         </form>
-
-        <style>
-            /* Ensure sections start collapsed except specified */
-            .saurity-section:not(.open) .saurity-section-content { display: none; }
-            .saurity-section.open .saurity-section-content { display: block; }
-            .saurity-section.open .saurity-section-arrow { transform: rotate(180deg); }
-        </style>
         <?php
     }
 
@@ -1492,69 +1498,6 @@ class Admin {
     }
 
     /**
-     * Render tooltip styles
-     */
-    private function render_tooltip_styles() {
-        ?>
-        <style>
-            .saurity-setting-label {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .saurity-info-icon {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 18px;
-                height: 18px;
-                border-radius: 50%;
-                background: #2196F3;
-                color: white;
-                font-size: 12px;
-                font-weight: bold;
-                cursor: help;
-                position: relative;
-            }
-            .saurity-tooltip {
-                visibility: hidden;
-                opacity: 0;
-                position: absolute;
-                z-index: 1000;
-                bottom: 125%;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 280px;
-                background-color: #333;
-                color: #fff;
-                text-align: left;
-                padding: 12px;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: normal;
-                line-height: 1.5;
-                transition: opacity 0.3s;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            }
-            .saurity-tooltip::after {
-                content: "";
-                position: absolute;
-                top: 100%;
-                left: 50%;
-                margin-left: -5px;
-                border-width: 5px;
-                border-style: solid;
-                border-color: #333 transparent transparent transparent;
-            }
-            .saurity-info-icon:hover .saurity-tooltip {
-                visibility: visible;
-                opacity: 1;
-            }
-        </style>
-        <?php
-    }
-
-    /**
      * Render info icon with tooltip
      *
      * @param string $tooltip_text Tooltip text.
@@ -1714,7 +1657,7 @@ class Admin {
      * @param string $hook Current admin page hook.
      */
     public function enqueue_admin_styles( $hook ) {
-        // Enqueue main admin CSS file (for Saurity admin pages)
+        // Enqueue main admin CSS and JS for Saurity admin pages.
         if ( strpos( $hook, 'saurity' ) !== false ) {
             wp_enqueue_style(
                 'saurity-admin',
@@ -1722,6 +1665,28 @@ class Admin {
                 [],
                 SAURITY_VERSION
             );
+
+            wp_enqueue_script(
+                'saurity-admin-js',
+                plugins_url( 'assets/admin-scripts.js', dirname( __FILE__ ) ),
+                [ 'jquery' ],
+                SAURITY_VERSION,
+                true
+            );
+
+            // Pass threat-feed nonce to JS only when feeds are enabled.
+            if ( get_option( 'saurity_threat_feeds_enabled', false ) ) {
+                wp_localize_script( 'saurity-admin-js', 'saurityFeedsData', [
+                    'nonce' => wp_create_nonce( 'saurity_feeds_ajax' ),
+                ] );
+            }
+
+            // Pass Cloudflare nonce to JS when Cloudflare is configured.
+            if ( get_option( 'saurity_cloudflare_enabled', false ) && get_option( 'saurity_cloudflare_api_token', '' ) ) {
+                wp_localize_script( 'saurity-admin-js', 'saurityCloudflare', [
+                    'nonce' => wp_create_nonce( 'saurity_cloudflare_ajax' ),
+                ] );
+            }
         }
 
         // Admin bar indicator styles (always loaded)
@@ -2307,31 +2272,6 @@ class Admin {
                 <li><strong>Import/Export:</strong> CSV format: <code>IP,Note/Reason,Date,AddedBy</code> (first row is header)</li>
             </ul>
         </div>
-        
-        <script type="text/javascript">
-        function toggleAllCheckboxes(listType) {
-            var checkAll = document.getElementById(listType + '-check-all');
-            var checkboxes = document.querySelectorAll('.' + listType + '-checkbox');
-            checkboxes.forEach(function(cb) {
-                cb.checked = checkAll.checked;
-            });
-            updateBulkBar(listType);
-        }
-        
-        function updateBulkBar(listType) {
-            var checkboxes = document.querySelectorAll('.' + listType + '-checkbox:checked');
-            var count = checkboxes.length;
-            var bulkBar = document.getElementById(listType + '-bulk-bar');
-            var countSpan = document.getElementById(listType + '-selected-count');
-            
-            if (count > 0) {
-                bulkBar.style.display = 'flex';
-                countSpan.textContent = count;
-            } else {
-                bulkBar.style.display = 'none';
-            }
-        }
-        </script>
         <?php
     }
 
@@ -2950,7 +2890,6 @@ class Admin {
 
         <form method="post" action="options.php">
             <?php settings_fields( 'saurity_cloud_settings' ); ?>
-            <?php $this->render_tooltip_styles(); ?>
 
             <!-- Cloudflare Section - DISABLED -->
             <div style="background: #f5f5f5; padding: 20px; border: 1px solid #ddd; border-radius: 8px; border-left: 4px solid #999; margin-bottom: 20px; opacity: 0.6;">
@@ -3042,77 +2981,6 @@ class Admin {
                     <?php endif; ?>
                 </div>
 
-                <?php if ( get_option( 'saurity_cloudflare_enabled', false ) && get_option( 'saurity_cloudflare_api_token', '' ) ) : ?>
-                <script type="text/javascript">
-                jQuery(document).ready(function($) {
-                    // Test Connection button
-                    $('#saurity-cf-test-connection').on('click', function() {
-                        var $button = $(this);
-                        var $status = $('#saurity-cf-status');
-                        
-                        $button.prop('disabled', true).text('⏳ Testing...');
-                        $status.html('<span style="color: #666;">Connecting to Cloudflare API...</span>');
-                        
-                        $.ajax({
-                            url: ajaxurl,
-                            type: 'POST',
-                            data: {
-                                action: 'saurity_cloudflare_test',
-                                nonce: '<?php echo esc_js( wp_create_nonce( 'saurity_cloudflare_ajax' ) ); ?>'
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    $status.html('<span style="color: #28a745;">✅ ' + response.data.message + '</span>');
-                                } else {
-                                    $status.html('<span style="color: #dc3232;">❌ ' + response.data.message + '</span>');
-                                }
-                            },
-                            error: function() {
-                                $status.html('<span style="color: #dc3232;">❌ Network error</span>');
-                            },
-                            complete: function() {
-                                $button.prop('disabled', false).text('🔗 Test Connection');
-                            }
-                        });
-                    });
-                    
-                    // Manual Sync button
-                    $('#saurity-cf-manual-sync').on('click', function() {
-                        var $button = $(this);
-                        var $status = $('#saurity-cf-status');
-                        
-                        $button.prop('disabled', true).text('⏳ Syncing...');
-                        $status.html('<span style="color: #666;">Syncing with Cloudflare...</span>');
-                        
-                        $.ajax({
-                            url: ajaxurl,
-                            type: 'POST',
-                            data: {
-                                action: 'saurity_cloudflare_sync',
-                                nonce: '<?php echo esc_js( wp_create_nonce( 'saurity_cloudflare_ajax' ) ); ?>'
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    $status.html('<span style="color: #28a745;">✅ ' + response.data.message + '</span>');
-                                    // Reload after 2 seconds to show updated stats
-                                    setTimeout(function() {
-                                        location.reload();
-                                    }, 2000);
-                                } else {
-                                    $status.html('<span style="color: #dc3232;">❌ ' + response.data.message + '</span>');
-                                }
-                            },
-                            error: function() {
-                                $status.html('<span style="color: #dc3232;">❌ Network error</span>');
-                            },
-                            complete: function() {
-                                $button.prop('disabled', false).text('🔄 Sync Now');
-                            }
-                        });
-                    });
-                });
-                </script>
-                <?php endif; ?>
 
                 <?php /* Cloudflare stats commented out
                 if ( $cloud_integration && get_option( 'saurity_cloudflare_enabled', false ) ) : ?>
@@ -3246,132 +3114,6 @@ class Admin {
                         </div>
                     <?php endif; ?>
                 </div>
-
-                <?php if ( get_option( 'saurity_threat_feeds_enabled', false ) ) : ?>
-                    <script type="text/javascript">
-                    jQuery(document).ready(function($) {
-                        $('#saurity-start-feed-update').on('click', function() {
-                            var $button = $(this);
-                            var $progress = $('#saurity-feed-progress');
-                            var $current = $('#saurity-feed-current');
-                            var $progressBar = $('#saurity-feed-progress-bar');
-                            var $results = $('#saurity-feed-results');
-                            
-                            // Get enabled feeds
-                            var enabledFeeds = [];
-                            $('input[name="saurity_threat_feeds_builtin[]"]:checked').each(function() {
-                                enabledFeeds.push($(this).val());
-                            });
-                            
-                            if (enabledFeeds.length === 0) {
-                                alert('Please enable at least one threat feed before updating.');
-                                return;
-                            }
-                            
-                            // Disable button and show progress
-                            $button.prop('disabled', true).text('⏳ Updating...');
-                            $progress.show();
-                            $results.empty().hide();
-                            
-                            var totalFeeds = enabledFeeds.length;
-                            var currentFeed = 0;
-                            var results = [];
-                            
-                            // Feed name mapping
-                            var feedNames = {
-                                'emerging_threats': 'Emerging Threats',
-                                'spamhaus': 'Spamhaus DROP',
-                                'blocklist_de': 'Blocklist.de'
-                            };
-                            
-                            // Process feeds one by one
-                            function processNextFeed() {
-                                if (currentFeed >= enabledFeeds.length) {
-                                    // All done
-                                    $button.prop('disabled', false).text('🔄 Start Update');
-                                    $progress.hide();
-                                    $current.text('Preparing...');
-                                    $progressBar.css('width', '0%');
-                                    
-                                    // Show results
-                                    var html = '<div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 4px;">';
-                                    html += '<h4 style="margin: 0 0 10px 0;">✅ Update Complete</h4>';
-                                    html += '<ul style="margin: 0; font-size: 13px; line-height: 1.8;">';
-                                    
-                                    results.forEach(function(result) {
-                                        var icon = result.success ? '✅' : '❌';
-                                        var color = result.success ? '#28a745' : '#dc3232';
-                                        html += '<li style="color: ' + color + ';">';
-                                        html += icon + ' <strong>' + result.feed + ':</strong> ' + result.message;
-                                        html += '</li>';
-                                    });
-                                    
-                                    html += '</ul></div>';
-                                    $results.html(html).show();
-                                    
-                                    // Reload the page after 3 seconds to refresh statistics
-                                    setTimeout(function() {
-                                        location.reload();
-                                    }, 3000);
-                                    
-                                    return;
-                                }
-                                
-                                var feedId = enabledFeeds[currentFeed];
-                                var feedName = feedNames[feedId] || feedId;
-                                
-                                // Update progress
-                                $current.text('Updating ' + feedName + '... (' + (currentFeed + 1) + '/' + totalFeeds + ')');
-                                $progressBar.css('width', ((currentFeed / totalFeeds) * 100) + '%');
-                                
-                                // Make AJAX request
-                                $.ajax({
-                                    url: ajaxurl,
-                                    type: 'POST',
-                                    data: {
-                                        action: 'saurity_update_feeds_ajax',
-                                nonce: '<?php echo esc_js( wp_create_nonce( 'saurity_feeds_ajax' ) ); ?>',
-                                        feed_id: feedId
-                                    },
-                                    success: function(response) {
-                                        if (response.success) {
-                                            results.push({
-                                                success: true,
-                                                feed: feedName,
-                                                message: response.data.message + ' (' + response.data.total_ips + ' IPs)'
-                                            });
-                                        } else {
-                                            results.push({
-                                                success: false,
-                                                feed: feedName,
-                                                message: response.data.message || 'Unknown error'
-                                            });
-                                        }
-                                    },
-                                    error: function(xhr, status, error) {
-                                        results.push({
-                                            success: false,
-                                            feed: feedName,
-                                            message: 'Network error: ' + error
-                                        });
-                                    },
-                                    complete: function() {
-                                        currentFeed++;
-                                        // Update progress bar to show completion
-                                        $progressBar.css('width', ((currentFeed / totalFeeds) * 100) + '%');
-                                        
-                                        // Process next feed after a short delay
-                                        setTimeout(processNextFeed, 500);
-                                    }
-                                });
-                            }
-                            
-                            // Start processing
-                            processNextFeed();
-                        });
-                    });
-                    </script>
-                <?php endif; ?>
 
                 <?php if ( $cloud_integration && get_option( 'saurity_threat_feeds_enabled', false ) ) : ?>
                     <?php

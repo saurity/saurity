@@ -1,16 +1,16 @@
 <?php
 /**
- * Plugin Name: Saurity Security
+ * Plugin Name: Saurity Shield
  * Plugin URI: https://github.com/saurity/saurity
- * Description: Enterprise-grade WordPress security: Smart rate limiting, advanced firewall, IP management, real-time threat detection. Protects login, forms, comments & XML-RPC. Zero false positives. Built for performance.
- * Version: 1.1.1
+ * Description: Enterprise-grade WordPress security: Smart rate limiting, advanced firewall, IP management, real-time threat detection. Protects login, forms, comments & XML-RPC. Built for performance.
+ * Version: 1.1.2
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: Saurav Kumar
  * Author URI: https://github.com/saurity
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: saurity
+ * Text Domain: saurity-shield
  * Domain Path: /languages
  * Tags: security, firewall, brute force, rate limiting, login protection, spam protection, ddos protection, ip blocking, wordpress security
  *
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'SAURITY_VERSION', '1.1.1' );
+define( 'SAURITY_VERSION', '1.1.2' );
 define( 'SAURITY_FILE', __FILE__ );
 define( 'SAURITY_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SAURITY_URL', plugin_dir_url( __FILE__ ) );

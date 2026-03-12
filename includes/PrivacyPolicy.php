@@ -60,7 +60,7 @@ class PrivacyPolicy {
         $content = $this->get_privacy_policy_content();
 
         wp_add_privacy_policy_content(
-            'Saurity Security',
+            'Saurity Shield',
             wp_kses_post( $content )
         );
     }
@@ -71,44 +71,44 @@ class PrivacyPolicy {
      * @return string HTML content.
      */
     private function get_privacy_policy_content() {
-        $content = '<h2>' . __( 'Security Monitoring', 'saurity' ) . '</h2>';
+        $content = '<h2>' . __( 'Security Monitoring', 'saurity-shield' ) . '</h2>';
 
-        $content .= '<p>' . __( 'This website uses Saurity Security plugin to protect against malicious attacks and unauthorized access.', 'saurity' ) . '</p>';
+        $content .= '<p>' . __( 'This website uses Saurity Shield plugin to protect against malicious attacks and unauthorized access.', 'saurity-shield' ) . '</p>';
 
-        $content .= '<h3>' . __( 'What data we collect', 'saurity' ) . '</h3>';
-        $content .= '<p>' . __( 'For security purposes, we may collect and store:', 'saurity' ) . '</p>';
+        $content .= '<h3>' . __( 'What data we collect', 'saurity-shield' ) . '</h3>';
+        $content .= '<p>' . __( 'For security purposes, we may collect and store:', 'saurity-shield' ) . '</p>';
         $content .= '<ul>';
-        $content .= '<li>' . __( 'IP addresses of visitors', 'saurity' ) . '</li>';
-        $content .= '<li>' . __( 'Browser information (user agent strings)', 'saurity' ) . '</li>';
-        $content .= '<li>' . __( 'Login attempt details (username, timestamp, success/failure)', 'saurity' ) . '</li>';
-        $content .= '<li>' . __( 'Security event timestamps', 'saurity' ) . '</li>';
+        $content .= '<li>' . __( 'IP addresses of visitors', 'saurity-shield' ) . '</li>';
+        $content .= '<li>' . __( 'Browser information (user agent strings)', 'saurity-shield' ) . '</li>';
+        $content .= '<li>' . __( 'Login attempt details (username, timestamp, success/failure)', 'saurity-shield' ) . '</li>';
+        $content .= '<li>' . __( 'Security event timestamps', 'saurity-shield' ) . '</li>';
         $content .= '</ul>';
 
-        $content .= '<h3>' . __( 'Why we collect this data', 'saurity' ) . '</h3>';
-        $content .= '<p>' . __( 'This data is collected to:', 'saurity' ) . '</p>';
+        $content .= '<h3>' . __( 'Why we collect this data', 'saurity-shield' ) . '</h3>';
+        $content .= '<p>' . __( 'This data is collected to:', 'saurity-shield' ) . '</p>';
         $content .= '<ul>';
-        $content .= '<li>' . __( 'Protect against brute force attacks', 'saurity' ) . '</li>';
-        $content .= '<li>' . __( 'Detect and block malicious traffic', 'saurity' ) . '</li>';
-        $content .= '<li>' . __( 'Investigate security incidents', 'saurity' ) . '</li>';
-        $content .= '<li>' . __( 'Comply with legal requirements', 'saurity' ) . '</li>';
+        $content .= '<li>' . __( 'Protect against brute force attacks', 'saurity-shield' ) . '</li>';
+        $content .= '<li>' . __( 'Detect and block malicious traffic', 'saurity-shield' ) . '</li>';
+        $content .= '<li>' . __( 'Investigate security incidents', 'saurity-shield' ) . '</li>';
+        $content .= '<li>' . __( 'Comply with legal requirements', 'saurity-shield' ) . '</li>';
         $content .= '</ul>';
 
-        $content .= '<h3>' . __( 'Legal basis', 'saurity' ) . '</h3>';
+        $content .= '<h3>' . __( 'Legal basis', 'saurity-shield' ) . '</h3>';
         $content .= '<p>' . sprintf(
             /* translators: %s: GDPR article reference */
-            __( 'The legal basis for processing this data is legitimate interest in website security (%s).', 'saurity' ),
+            __( 'The legal basis for processing this data is legitimate interest in website security (%s).', 'saurity-shield' ),
             'GDPR Article 6.1(f)'
         ) . '</p>';
 
-        $content .= '<h3>' . __( 'Data retention', 'saurity' ) . '</h3>';
+        $content .= '<h3>' . __( 'Data retention', 'saurity-shield' ) . '</h3>';
         $retention_days = get_option( 'saurity_log_retention_days', 15 );
         $content .= '<p>' . sprintf(
             /* translators: %d: number of days */
-            __( 'Security logs are automatically deleted after %d days.', 'saurity' ),
+            __( 'Security logs are automatically deleted after %d days.', 'saurity-shield' ),
             $retention_days
         ) . '</p>';
 
-        $content .= '<h3>' . __( 'Third-party services', 'saurity' ) . '</h3>';
+        $content .= '<h3>' . __( 'Third-party services', 'saurity-shield' ) . '</h3>';
 
         // Check which optional services are enabled
         $cloudflare_enabled = get_option( 'saurity_cloudflare_enabled', false );
@@ -117,28 +117,28 @@ class PrivacyPolicy {
         $geoip_provider = get_option( 'saurity_geoip_provider', 'maxmind' );
 
         if ( ! $cloudflare_enabled && ! $threat_feeds_enabled && ! $geoip_enabled ) {
-            $content .= '<p>' . __( 'This website does not share security data with any third-party services.', 'saurity' ) . '</p>';
+            $content .= '<p>' . __( 'This website does not share security data with any third-party services.', 'saurity-shield' ) . '</p>';
         } else {
-            $content .= '<p>' . __( 'The following optional third-party services may be used:', 'saurity' ) . '</p>';
+            $content .= '<p>' . __( 'The following optional third-party services may be used:', 'saurity-shield' ) . '</p>';
             $content .= '<ul>';
 
             if ( $cloudflare_enabled ) {
-                $content .= '<li>' . __( '<strong>Cloudflare:</strong> Blocked IP addresses may be synced with Cloudflare firewall for enhanced protection.', 'saurity' ) . '</li>';
+                $content .= '<li>' . __( '<strong>Cloudflare:</strong> Blocked IP addresses may be synced with Cloudflare firewall for enhanced protection.', 'saurity-shield' ) . '</li>';
             }
 
             if ( $threat_feeds_enabled ) {
-                $content .= '<li>' . __( '<strong>Threat Intelligence Feeds:</strong> Public blocklists are downloaded to protect against known malicious IPs. No personal data is sent.', 'saurity' ) . '</li>';
+                $content .= '<li>' . __( '<strong>Threat Intelligence Feeds:</strong> Public blocklists are downloaded to protect against known malicious IPs. No personal data is sent.', 'saurity-shield' ) . '</li>';
             }
 
             if ( $geoip_enabled && $geoip_provider === 'ipapi' ) {
-                $content .= '<li>' . __( '<strong>IP-API.com:</strong> IP addresses may be sent to determine geographic location for country-based blocking.', 'saurity' ) . '</li>';
+                $content .= '<li>' . __( '<strong>IP-API.com:</strong> IP addresses may be sent to determine geographic location for country-based blocking.', 'saurity-shield' ) . '</li>';
             }
 
             $content .= '</ul>';
         }
 
-        $content .= '<h3>' . __( 'Your rights', 'saurity' ) . '</h3>';
-        $content .= '<p>' . __( 'You may request access to, correction of, or deletion of your personal data by contacting the site administrator.', 'saurity' ) . '</p>';
+        $content .= '<h3>' . __( 'Your rights', 'saurity-shield' ) . '</h3>';
+        $content .= '<p>' . __( 'You may request access to, correction of, or deletion of your personal data by contacting the site administrator.', 'saurity-shield' ) . '</p>';
 
         return $content;
     }
@@ -151,7 +151,7 @@ class PrivacyPolicy {
      */
     public function register_data_exporter( $exporters ) {
         $exporters['saurity'] = [
-            'exporter_friendly_name' => __( 'Saurity Security Logs', 'saurity' ),
+            'exporter_friendly_name' => __( 'Saurity Shield Logs', 'saurity-shield' ),
             'callback' => [ $this, 'export_personal_data' ],
         ];
 
@@ -205,28 +205,28 @@ class PrivacyPolicy {
             foreach ( $logs as $log ) {
                 $export_items[] = [
                     'group_id' => 'saurity-logs',
-                    'group_label' => __( 'Security Logs', 'saurity' ),
+                    'group_label' => __( 'Security Logs', 'saurity-shield' ),
                     'item_id' => 'log-' . md5( $log->created_at . $log->ip_address ),
                     'data' => [
                         [
-                            'name' => __( 'Date', 'saurity' ),
+                            'name' => __( 'Date', 'saurity-shield' ),
                             'value' => $log->created_at,
                         ],
                         [
-                            'name' => __( 'Event Type', 'saurity' ),
+                            'name' => __( 'Event Type', 'saurity-shield' ),
                             'value' => $log->event_type,
                         ],
                         [
-                            'name' => __( 'Message', 'saurity' ),
+                            'name' => __( 'Message', 'saurity-shield' ),
                             'value' => $log->message,
                         ],
                         [
-                            'name' => __( 'IP Address', 'saurity' ),
-                            'value' => $log->ip_address ?: __( 'Not recorded', 'saurity' ),
+                            'name' => __( 'IP Address', 'saurity-shield' ),
+                            'value' => $log->ip_address ?: __( 'Not recorded', 'saurity-shield' ),
                         ],
                         [
-                            'name' => __( 'User Agent', 'saurity' ),
-                            'value' => $log->user_agent ?: __( 'Not recorded', 'saurity' ),
+                            'name' => __( 'User Agent', 'saurity-shield' ),
+                            'value' => $log->user_agent ?: __( 'Not recorded', 'saurity-shield' ),
                         ],
                     ],
                 ];
@@ -251,7 +251,7 @@ class PrivacyPolicy {
      */
     public function register_data_eraser( $erasers ) {
         $erasers['saurity'] = [
-            'eraser_friendly_name' => __( 'Saurity Security Logs', 'saurity' ),
+            'eraser_friendly_name' => __( 'Saurity Shield Logs', 'saurity-shield' ),
             'callback' => [ $this, 'erase_personal_data' ],
         ];
 
@@ -308,7 +308,7 @@ class PrivacyPolicy {
                 $items_removed = $deleted;
                 $messages[] = sprintf(
                     /* translators: %d: number of records deleted */
-                    __( 'Deleted %d security log entries.', 'saurity' ),
+                    __( 'Deleted %d security log entries.', 'saurity-shield' ),
                     $deleted
                 );
 
@@ -345,7 +345,7 @@ class PrivacyPolicy {
             $items_retained = $user_added_allowlist + $user_added_blocklist;
             $messages[] = sprintf(
                 /* translators: %d: number of IP rules retained */
-                __( '%d IP rules added by this user were retained for security purposes.', 'saurity' ),
+                __( '%d IP rules added by this user were retained for security purposes.', 'saurity-shield' ),
                 $items_retained
             );
         }

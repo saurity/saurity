@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Saurity-Enterprise%20Security-0066CC?style=for-the-badge&logo=wordpress&logoColor=white" alt="Saurity">
+  <img src="https://img.shields.io/badge/Saurity%20Shield-Enterprise%20Security-0066CC?style=for-the-badge&logo=wordpress&logoColor=white" alt="Saurity Shield">
 </p>
 
-<h1 align="center">Saurity Security</h1>
+<h1 align="center">Saurity Shield</h1>
 
 <p align="center">
   <strong>Enterprise-Grade WordPress Security Plugin</strong><br>
@@ -426,7 +426,7 @@ git push origin feature/amazing-feature
 ## License
 
 ```
-Saurity Security Plugin
+Saurity Shield Plugin
 Copyright (C) 2026 Saurav Kumar
 
 This program is free software; you can redistribute it and/or modify

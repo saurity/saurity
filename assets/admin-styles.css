@@ -1615,3 +1615,13 @@
         font-size: 16px;
     }
 }
+
+/* ============================================
+   BUG REPORT PAGE
+   ============================================ */
+
+/* Card hover lift effect used on quick-link anchors */
+a[style*="border: 2px solid"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

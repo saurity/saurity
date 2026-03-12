@@ -60,13 +60,15 @@ class ReportsDashboard {
 
     /**
      * Enqueue assets
+     *
+     * @param string $hook Current admin page hook.
      */
     public function enqueue_assets( $hook ) {
         if ( 'saurity_page_saurity-reports' !== $hook ) {
             return;
         }
 
-        // Enqueue Chart.js from local assets (bundled with plugin)
+        // Chart.js (bundled with plugin).
         wp_enqueue_script(
             'chartjs',
             plugins_url( 'assets/chart.min.js', dirname( __FILE__ ) ),
@@ -74,6 +76,88 @@ class ReportsDashboard {
             '4.4.0',
             true
         );
+
+        // Reports UI script.
+        wp_enqueue_script(
+            'saurity-reports-js',
+            plugins_url( 'assets/reports-scripts.js', dirname( __FILE__ ) ),
+            [ 'jquery', 'chartjs' ],
+            SAURITY_VERSION,
+            true
+        );
+
+        // Load the report being viewed so chart data can be passed to JS.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- View navigation, not form submission
+        $report_id = isset( $_GET['report_id'] ) ? absint( $_GET['report_id'] ) : null;
+        if ( $report_id ) {
+            $report = $this->reports->get_report( $report_id );
+        } else {
+            $reports_list = $this->reports->get_reports( 1 );
+            $report       = ! empty( $reports_list ) ? $reports_list[0] : null;
+        }
+
+        $report_data = ( $report && isset( $report['report_data'] ) ) ? $report['report_data'] : null;
+
+        wp_localize_script( 'saurity-reports-js', 'saurityReports', [
+            'generateNonce' => wp_create_nonce( 'saurity_generate_report' ),
+            'exportNonce'   => wp_create_nonce( 'saurity_export' ),
+            'reportData'    => $report_data,
+        ] );
+
+        // Reports-specific CSS, added to the already-enqueued saurity-admin stylesheet.
+        $css = '
+            .saurity-reports-dashboard { background:#f0f0f1; margin:20px 20px 20px 0; padding:30px; border-radius:8px; }
+            .saurity-toolbar { background:white; padding:20px; margin-bottom:30px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); display:flex; align-items:center; gap:10px; }
+            .saurity-report-header { background:white; padding:20px; margin-bottom:20px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+            .saurity-score-card { background:white; padding:40px; margin-bottom:30px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); display:flex; align-items:center; gap:40px; }
+            .saurity-score-card.excellent { border-left:5px solid #46b450; }
+            .saurity-score-card.good { border-left:5px solid #ff9800; }
+            .saurity-score-card.needs-improvement { border-left:5px solid #dc3232; }
+            .score-circle { text-align:center; min-width:150px; }
+            .score-value { font-size:64px; font-weight:bold; color:#2196F3; line-height:1; }
+            .score-label { font-size:16px; color:#666; margin-top:10px; }
+            .score-description { flex:1; }
+            .score-description p { font-size:18px; margin:0; }
+            .saurity-metrics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px; margin-bottom:30px; }
+            .metric-card { background:white; padding:25px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); text-align:center; border-left:4px solid #2196F3; }
+            .metric-card.warning { border-left-color:#ff9800; }
+            .metric-card.danger { border-left-color:#dc3232; }
+            .metric-card.success { border-left-color:#46b450; }
+            .metric-card.info { border-left-color:#00bcd4; }
+            .metric-icon { font-size:32px; margin-bottom:10px; color:#666; }
+            .metric-icon .dashicons { font-size:32px; width:32px; height:32px; }
+            .metric-value { font-size:36px; font-weight:bold; color:#333; line-height:1; }
+            .metric-label { font-size:14px; color:#666; margin-top:8px; }
+            .saurity-charts-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr)); gap:20px; margin-bottom:30px; }
+            .chart-container { background:white; padding:25px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+            .chart-container h3 { margin-top:0; margin-bottom:20px; color:#333; }
+            .saurity-section { background:white; padding:30px; margin-bottom:20px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+            .saurity-section h2 { margin-top:0; color:#333; border-bottom:2px solid #f0f0f1; padding-bottom:15px; margin-bottom:20px; }
+            .saurity-data-table { width:100%; border-collapse:collapse; }
+            .saurity-data-table th { background:#f9f9f9; padding:12px; text-align:left; font-weight:600; color:#333; border-bottom:2px solid #ddd; }
+            .saurity-data-table td { padding:12px; border-bottom:1px solid #f0f0f1; }
+            .saurity-data-table tr:hover { background:#f9f9f9; }
+            .threat-badge { display:inline-block; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:600; text-transform:uppercase; }
+            .threat-badge.critical { background:#dc3232; color:white; }
+            .threat-badge.high { background:#ff9800; color:white; }
+            .threat-badge.medium { background:#00bcd4; color:white; }
+            .threat-badge.low { background:#46b450; color:white; }
+            .score-badge { display:inline-block; padding:6px 14px; border-radius:20px; font-weight:600; font-size:14px; }
+            .score-badge.excellent { background:#46b450; color:white; }
+            .score-badge.good { background:#ff9800; color:white; }
+            .score-badge.needs-improvement { background:#dc3232; color:white; }
+            .saurity-no-reports { background:white; padding:60px; text-align:center; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+            .saurity-no-reports .icon { font-size:72px; margin-bottom:20px; color:#666; }
+            .saurity-no-reports h2 { color:#333; margin-bottom:10px; }
+            .saurity-no-reports p { color:#666; font-size:16px; margin-bottom:30px; }
+            .export-dropdown { position:relative; display:inline-block; }
+            .export-menu-content { position:absolute; top:100%; right:0; margin-top:5px; background:white; border:1px solid #ddd; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,.15); min-width:180px; z-index:1000; }
+            .export-menu-content a { display:block; padding:10px 15px; text-decoration:none; color:#333; border-bottom:1px solid #f0f0f1; }
+            .export-menu-content a:last-child { border-bottom:none; }
+            .export-menu-content a:hover { background:#f5f5f5; color:#0073aa; }
+            .export-menu-content .dashicons { margin-right:8px; color:#666; }
+        ';
+        wp_add_inline_style( 'saurity-admin', $css );
     }
 
     /**
@@ -81,7 +165,7 @@ class ReportsDashboard {
      */
     public function render_dashboard() {
         if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'saurity' ) );
+            wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'saurity-shield' ) );
         }
 
         // Get current report or generate new one
@@ -113,8 +197,6 @@ class ReportsDashboard {
 
             <?php $this->render_reports_history( $reports_history ); ?>
 
-            <?php $this->render_styles(); ?>
-            <?php $this->render_scripts( $report ); ?>
         </div>
         <?php
     }
@@ -368,11 +450,13 @@ class ReportsDashboard {
     }
 
     /**
-     * Render styles
+     * Render styles — CSS moved to enqueue_assets() via wp_add_inline_style().
+     *
+     * @deprecated Kept as a no-op to avoid fatal errors if called externally.
      */
     private function render_styles() {
-        ?>
-        <style>
+        // CSS is now enqueued via wp_add_inline_style() in enqueue_assets().
+        /*
             .saurity-reports-dashboard {
                 background: #f0f0f1;
                 margin: 20px 20px 20px 0;
@@ -635,188 +719,17 @@ class ReportsDashboard {
                 margin-right: 8px;
                 color: #666;
             }
-        </style>
-        <?php
+        */
     }
 
     /**
-     * Render scripts
+     * Render scripts — no-op. JS is now in assets/reports-scripts.js,
+     * enqueued and localised in enqueue_assets().
+     *
+     * @param array|null $report Unused (retained for backwards compatibility).
      */
     private function render_scripts( $report ) {
-        ?>
-        <script>
-        jQuery(document).ready(function($) {
-            // Generate report button
-            $('#generate-report-btn, #generate-first-report').on('click', function() {
-                var $btn = $(this);
-                var originalText = $btn.text();
-                
-                $btn.prop('disabled', true).text('Generating...');
-                $('#report-status').show().text('Generating report...').css('color', '#2196F3');
-
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    data: {
-                        action: 'saurity_generate_report',
-                        nonce: '<?php echo esc_js( wp_create_nonce( 'saurity_generate_report' ) ); ?>'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#report-status').text('Report generated successfully!').css('color', '#46b450');
-                            setTimeout(function() {
-                                window.location.reload();
-                            }, 1000);
-                        } else {
-                            $('#report-status').text('Error: ' + response.data).css('color', '#dc3232');
-                            $btn.prop('disabled', false).text(originalText);
-                        }
-                    },
-                    error: function() {
-                        $('#report-status').text('Error generating report').css('color', '#dc3232');
-                        $btn.prop('disabled', false).text(originalText);
-                    }
-                });
-            });
-
-            // Export menu toggle
-            $('#export-menu-btn').on('click', function(e) {
-                e.stopPropagation();
-                $('#export-menu').toggle();
-            });
-
-            // Close export menu when clicking outside
-            $(document).on('click', function() {
-                $('#export-menu').hide();
-            });
-
-            // Export as PDF
-            $('#export-pdf-btn').on('click', function(e) {
-                e.preventDefault();
-                $('#export-menu').hide();
-                
-                var reportId = new URLSearchParams(window.location.search).get('report_id') || '';
-                var exportUrl = ajaxurl + '?action=saurity_export_pdf&report_id=' + reportId + '&nonce=<?php echo esc_js( wp_create_nonce( 'saurity_export' ) ); ?>';
-                
-                $('#report-status').show().text('Generating PDF...').css('color', '#2196F3');
-                
-                // Open in new tab
-                window.open(exportUrl, '_blank');
-                
-                setTimeout(function() {
-                    $('#report-status').hide();
-                }, 2000);
-            });
-
-            // Export as CSV
-            $('#export-csv-btn').on('click', function(e) {
-                e.preventDefault();
-                $('#export-menu').hide();
-                
-                var reportId = new URLSearchParams(window.location.search).get('report_id') || '';
-                var exportUrl = ajaxurl + '?action=saurity_export_csv&report_id=' + reportId + '&nonce=<?php echo esc_js( wp_create_nonce( 'saurity_export' ) ); ?>';
-                
-                $('#report-status').show().text('Generating CSV...').css('color', '#2196F3');
-                
-                // Trigger download
-                window.location.href = exportUrl;
-                
-                setTimeout(function() {
-                    $('#report-status').hide();
-                }, 2000);
-            });
-
-            <?php if ( $report && isset( $report['report_data'] ) ) : ?>
-            // Render charts
-            var reportData = <?php echo wp_json_encode( $report['report_data'] ); ?>;
-
-            // Event Types Chart
-            var eventTypesCtx = document.getElementById('eventTypesChart');
-            if (eventTypesCtx) {
-                new Chart(eventTypesCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Info', 'Warning', 'Error', 'Critical'],
-                        datasets: [{
-                            data: [
-                                reportData.event_counts.info,
-                                reportData.event_counts.warning,
-                                reportData.event_counts.error,
-                                reportData.event_counts.critical
-                            ],
-                            backgroundColor: [
-                                '#2196F3',
-                                '#ff9800',
-                                '#f44336',
-                                '#9c27b0'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Daily Trend Chart
-            var dailyTrendCtx = document.getElementById('dailyTrendChart');
-            if (dailyTrendCtx && reportData.daily_stats) {
-                var labels = reportData.daily_stats.map(function(stat) {
-                    return new Date(stat.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                });
-                
-                new Chart(dailyTrendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: 'Total Events',
-                                data: reportData.daily_stats.map(function(stat) { return stat.total; }),
-                                borderColor: '#2196F3',
-                                backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                                tension: 0.4
-                            },
-                            {
-                                label: 'Warnings',
-                                data: reportData.daily_stats.map(function(stat) { return stat.warnings; }),
-                                borderColor: '#ff9800',
-                                backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                                tension: 0.4
-                            },
-                            {
-                                label: 'Errors',
-                                data: reportData.daily_stats.map(function(stat) { return stat.errors; }),
-                                borderColor: '#f44336',
-                                backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                                tension: 0.4
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-            <?php endif; ?>
-        });
-        </script>
-        <?php
+        unset( $report ); // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
     }
 
     /**
@@ -920,29 +833,11 @@ class ReportsDashboard {
         <head>
             <meta charset="UTF-8">
             <title>Security Report - <?php echo esc_html( $start_date ); ?> to <?php echo esc_html( $end_date ); ?></title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; }
-                .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #2196F3; padding-bottom: 20px; }
-                .header h1 { margin: 0; color: #2196F3; font-size: 32px; }
-                .header p { margin: 5px 0; color: #666; }
-                .score-section { text-align: center; margin: 30px 0; padding: 30px; background: #f5f5f5; border-radius: 8px; }
-                .score { font-size: 72px; font-weight: bold; color: <?php echo $score >= 80 ? '#46b450' : ( $score >= 60 ? '#ff9800' : '#dc3232' ); ?>; }
-                .score-label { font-size: 18px; color: #666; margin-top: 10px; }
-                .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 30px 0; }
-                .metric { text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 4px; }
-                .metric-value { font-size: 32px; font-weight: bold; color: #2196F3; }
-                .metric-label { font-size: 14px; color: #666; margin-top: 5px; }
-                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                th { background: #f5f5f5; padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; }
-                td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
-                tr:hover { background: #fafafa; }
-                h2 { color: #333; border-bottom: 2px solid #2196F3; padding-bottom: 10px; margin-top: 40px; }
-                .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
-                @media print {
-                    body { margin: 20px; }
-                    .no-print { display: none; }
-                }
-            </style>
+            <!-- Dynamic score colour token only; all other styles are in the external stylesheet -->
+            <?php $score_color = $score >= 80 ? '#46b450' : ( $score >= 60 ? '#ff9800' : '#dc3232' ); ?>
+            <style>:root { --saurity-score-color: <?php echo esc_attr( $score_color ); ?>; }</style>
+            <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Standalone HTML doc sent outside WP rendering; wp_enqueue_style() not applicable ?>
+            <link rel="stylesheet" href="<?php echo esc_url( plugins_url( '../assets/report-print.css', __FILE__ ) ); ?>">
         </head>
         <body>
             <div class="header">
@@ -1047,7 +942,7 @@ class ReportsDashboard {
             <?php endif; ?>
 
             <div class="footer">
-                <p>Generated by Saurity Security Plugin</p>
+                <p>Generated by Saurity Shield Plugin</p>
                 <p><?php echo esc_html( home_url() ); ?></p>
                 <p class="no-print" style="margin-top: 20px;">
                     <button onclick="window.print()" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">

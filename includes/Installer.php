@@ -95,7 +95,7 @@ class Installer {
 
         // Log activation
         $logger = new ActivityLogger();
-        $logger->log( 'info', 'Saurity plugin activated' );
+        $logger->log( 'info', 'Saurity Shield plugin activated' );
     }
 
     /**

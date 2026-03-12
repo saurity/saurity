@@ -430,131 +430,10 @@ abstract class SecurityComponent {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title><?php echo esc_html( $title ); ?> - Security Protection</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                    background: #ffffff;
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 20px;
-                }
-                .container {
-                    background: white;
-                    border-radius: 12px;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-                    max-width: 600px;
-                    width: 100%;
-                    padding: 40px;
-                    text-align: center;
-                    border: 1px solid #e0e0e0;
-                }
-                .icon {
-                    font-size: 64px;
-                    margin-bottom: 20px;
-                }
-                h1 {
-                    color: <?php echo esc_attr( $color ); ?>;
-                    font-size: 28px;
-                    margin-bottom: 10px;
-                }
-                .subtitle {
-                    color: #6c757d;
-                    font-size: 16px;
-                    margin-bottom: 30px;
-                }
-                .message-box {
-                    background: #f8f9fa;
-                    border-left: 4px solid <?php echo esc_attr( $color ); ?>;
-                    padding: 20px;
-                    text-align: left;
-                    border-radius: 4px;
-                    margin-bottom: 30px;
-                }
-                .message-box h3 {
-                    color: #333;
-                    font-size: 16px;
-                    margin-bottom: 10px;
-                }
-                .message-box p {
-                    color: #666;
-                    font-size: 14px;
-                    line-height: 1.6;
-                    margin-bottom: 10px;
-                }
-                .reason-code {
-                    background: #fff;
-                    border: 1px solid #dee2e6;
-                    padding: 10px;
-                    border-radius: 4px;
-                    font-family: 'Courier New', monospace;
-                    font-size: 13px;
-                    color: <?php echo esc_attr( $color ); ?>;
-                    margin-top: 15px;
-                }
-                .info-box {
-                    background: #e7f3ff;
-                    border-left: 4px solid #2196F3;
-                    padding: 15px;
-                    text-align: left;
-                    border-radius: 4px;
-                    margin-bottom: 20px;
-                }
-                .info-box strong {
-                    color: #2196F3;
-                }
-                .info-box p {
-                    color: #666;
-                    font-size: 13px;
-                    margin-top: 5px;
-                }
-                .info-box ul {
-                    margin: 10px 0 0 20px;
-                    font-size: 14px;
-                    color: #666;
-                }
-                .wait-time {
-                    background: #fff3e0;
-                    border: 2px solid #ff9800;
-                    padding: 15px;
-                    border-radius: 8px;
-                    margin: 20px 0;
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: #ff9800;
-                }
-                .btn {
-                    display: inline-block;
-                    background: #667eea;
-                    color: white;
-                    padding: 12px 30px;
-                    border-radius: 6px;
-                    text-decoration: none;
-                    font-weight: 500;
-                    transition: background 0.3s;
-                }
-                .btn:hover {
-                    background: #5568d3;
-                }
-                .footer {
-                    margin-top: 30px;
-                    padding-top: 20px;
-                    border-top: 1px solid #dee2e6;
-                    color: #6c757d;
-                    font-size: 12px;
-                }
-                .ip-address {
-                    color: #666;
-                    font-size: 12px;
-                    margin-top: 10px;
-                }
-            </style>
+            <!-- Dynamic color token only; all other styles are in the external stylesheet -->
+            <style>:root { --saurity-block-color: <?php echo esc_attr( $color ); ?>; }</style>
+            <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Standalone HTML doc sent outside WP rendering; wp_enqueue_style() not applicable ?>
+            <link rel="stylesheet" href="<?php echo esc_url( plugins_url( '../assets/block-page.css', __FILE__ ) ); ?>">
         </head>
         <body>
             <div class="container">
@@ -593,7 +472,7 @@ abstract class SecurityComponent {
                 
                 <div class="footer">
                     <strong><?php echo esc_html( $site_name ); ?></strong><br>
-                    Protected by Saurity Security
+                    Protected by Saurity Shield
                     <div class="ip-address">
                         Your IP: <?php echo esc_html( $this->client_ip ); ?> | <?php echo esc_html( current_time( 'Y-m-d H:i:s' ) ); ?>
                     </div>

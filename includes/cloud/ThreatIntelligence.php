@@ -558,36 +558,45 @@ class ThreatIntelligence {
         global $wpdb;
         $table = $wpdb->prefix . 'saurity_threat_feeds';
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct DB required for threat feeds, data changes frequently
-        $feed = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT * FROM {$wpdb->prefix}saurity_threat_feeds WHERE feed_id = %s",
-                $feed_id
-            )
-        );
+        $cache_key = 'saurity_feed_meta_' . sanitize_key( $feed_id );
+        $feed      = wp_cache_get( $cache_key, 'saurity_threat' );
+
+        if ( false === $feed ) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct DB required for threat feed metadata
+            $feed = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}saurity_threat_feeds WHERE feed_id = %s",
+                    $feed_id
+                )
+            );
+            wp_cache_set( $cache_key, $feed, 'saurity_threat', 300 );
+        }
 
         if ( $feed ) {
-            
-            $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct DB required for threat feeds
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct DB required for threat feeds
+            $wpdb->update(
                 $table,
                 [
-                    'total_ips' => $total_ips,
+                    'total_ips'    => $total_ips,
                     'last_updated' => current_time( 'mysql' ),
                 ],
                 [ 'feed_id' => $feed_id ]
             );
         } else {
-            
-            $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct DB required for threat feeds
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct DB required for threat feeds
+            $wpdb->insert(
                 $table,
                 [
-                    'feed_id' => $feed_id,
-                    'total_ips' => $total_ips,
+                    'feed_id'      => $feed_id,
+                    'total_ips'    => $total_ips,
                     'last_updated' => current_time( 'mysql' ),
-                    'created_at' => current_time( 'mysql' ),
+                    'created_at'   => current_time( 'mysql' ),
                 ]
             );
         }
+
+        // Invalidate cache after write so next read is fresh
+        wp_cache_delete( $cache_key, 'saurity_threat' );
     }
 
     /**

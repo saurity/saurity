@@ -337,53 +337,6 @@ class BugReport {
                 </div>
             </div>
         </div>
-
-        <script type="text/javascript">
-        jQuery(document).ready(function($) {
-            // Copy system info
-            $('#copy-system-info').on('click', function() {
-                var text = $('#system-info-text').text();
-                navigator.clipboard.writeText(text).then(function() {
-                    var $btn = $('#copy-system-info');
-                    $btn.text('✅ Copied!');
-                    setTimeout(function() {
-                        $btn.text('📋 Copy to Clipboard');
-                    }, 2000);
-                });
-            });
-
-            // Copy bug template
-            $('#copy-bug-template').on('click', function() {
-                var text = $('#bug-template-text').text();
-                navigator.clipboard.writeText(text).then(function() {
-                    var $btn = $('#copy-bug-template');
-                    $btn.text('✅ Copied!');
-                    setTimeout(function() {
-                        $btn.text('📋 Copy Template');
-                    }, 2000);
-                });
-            });
-
-            // Copy feature template
-            $('#copy-feature-template').on('click', function() {
-                var text = $('#feature-template-text').text();
-                navigator.clipboard.writeText(text).then(function() {
-                    var $btn = $('#copy-feature-template');
-                    $btn.text('✅ Copied!');
-                    setTimeout(function() {
-                        $btn.text('📋 Copy Template');
-                    }, 2000);
-                });
-            });
-        });
-        </script>
-
-        <style>
-            a[style*="border: 2px solid"]:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            }
-        </style>
         <?php
     }
 }
